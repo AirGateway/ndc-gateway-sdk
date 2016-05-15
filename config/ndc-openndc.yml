@@ -1,0 +1,17 @@
+# Run tests using IATA NDC sample sandbox Kronos
+label: ONDC
+
+rest:
+  url: http://ndc-sandbox.dev/api/v0/ndc/
+  headers:
+    Accept: application/xml
+    Content-Type: application/xml
+
+soap:
+auth:
+
+ndc:
+  Document:
+    Name: NDC Wrapper
+    ReferenceVersion: "1.0"
+

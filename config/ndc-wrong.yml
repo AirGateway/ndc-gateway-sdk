@@ -1,0 +1,13 @@
+# Run tests using IATA NDC sample sandbox Kronos
+label: KRO
+
+rest:
+  url: http://kronos.jrtechnologies.com/dondc
+  headers:
+    - Accept: application/xml
+    - Content-Type: application/xml
+
+ndc:
+  Document:
+    Name: NDC Wrapper
+    ReferenceVersion: "1.0"

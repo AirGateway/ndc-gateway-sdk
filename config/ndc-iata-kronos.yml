@@ -1,0 +1,46 @@
+# Run tests using IATA NDC sample sandbox Kronos
+label: KRO
+
+rest:
+  url: http://iata.api.mashery.com/kronos/api
+  headers:
+    Accept: application/xml
+    Content-Type: application/xml
+    Authorization-Key: vsh6he647b35smp9b3ekg7yh
+
+ndc:
+  Document:
+    Name: NDC Wrapper
+    ReferenceVersion: "1.0"
+  Party:
+    Sender:
+      ORA_Sender:
+        AirlineID: C9
+        Name: Kronos Air
+        AgentUser:
+          Name: TravelWadus
+          Type: TravelManagementCompany
+          PseudoCity: A4A
+          AgentUserID: travelwadus
+          IATA_Number: "00002004"
+  Participants:
+    Participant:
+      AggregatorParticipant:
+        Name: Wadus NDC Gateway
+        AggregatorID: WAD-00000
+  Parameters:
+    CurrCodes:
+      CurrCode: EUR
+  Preference:
+    AirlinePreferences:
+      Airline:
+        AirlineID: C9
+    FarePreferences:
+      FarePreferences:
+        Types:
+          Type:
+            Code: '759'
+    CabinPreferences:
+      CabinType:
+        Code: M
+        Definition: Economy/coach discounted
