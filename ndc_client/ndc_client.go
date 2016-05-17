@@ -1,6 +1,5 @@
 package ndc
 
-
 const (
 	AcceptedContentType string = "application/xml"
 )
