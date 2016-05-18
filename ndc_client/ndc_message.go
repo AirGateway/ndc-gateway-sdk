@@ -6,12 +6,14 @@ import(
   "time"
   "crypto/sha1"
   "encoding/hex"
-
+  
   "github.com/clbanning/mxj"
 )
 
 type Message struct {
   XMLName xml.Name
+
+  Client *Client `xml:"-"`
 
   Method string `xml:"-"`
   Params map[string]interface{} `xml:"-"`
@@ -23,9 +25,13 @@ type Message struct {
   TimeStamp string  `xml:"TimeStamp,attr"`
   Version string  `xml:"Version,attr"`
   TransactionIdentifier string  `xml:"TransactionIdentifier,attr"`
+
+  Body string `xml:",innerxml"`
 }
 
 func( message *Message ) ToXml() ( []byte, error ) {
+
+  // Namespace, etc.
 
   var XmlWriter = new( bytes.Buffer )
 
@@ -42,6 +48,13 @@ func( message *Message ) ToXml() ( []byte, error ) {
   message.TimeStamp = TimeStamp
   message.Version = "1.1.5"
   message.TransactionIdentifier = "TR-00000"
+
+  // Template based body:
+
+  bodyMap := mxj.Map( message.Client.Config["ndc"].(map[string]interface{}) )
+  bodyRawXml, _ := bodyMap.XmlIndent( "", "", "_body" )
+
+  message.Body = string( bodyRawXml )
 
   Map := mxj.Map(message.Params)
 
