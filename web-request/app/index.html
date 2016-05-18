@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <title>NDC Request</title>
+</head>
+<body>
+  <h1>NDC request (AirShoppingRQ)</h1>
+  <form action="/ndc" method="post">
+    <h3>CoreQuery/OriginDestinations/OriginDestination/Departure:</h3>
+    <p>
+      <label for="Departure_AirportCode">AirportCode</label>
+      <input type="text" name="Departure_AirportCode" value="MUC" />
+    </p>
+    <p>
+      <label for="Departure_Date">Date</label>
+      <input type="text" name="Departure_Date" value="2016-04-01" />
+    </p>
+    <h3>CoreQuery/OriginDestinations/OriginDestination/Arrival:</h3>
+    <p>
+      <label for="Arrival_AirportCode">AirportCode</label>
+      <input type="text" name="Arrival_AirportCode" value="LHR" />
+    </p>
+    <p>
+      <label for="Arrival_Date">Date</label>
+      <input type="text" name="Arrival_Date" value="2016-04-04" />
+    </p>
+    <p>
+      <input type="submit" value="Send" />
+    </p>
+  </form>
+</body>
+</html>
