@@ -1,7 +1,6 @@
 package tests
 
 import( "testing"
-        "fmt"
         "ndc-go-sdk/ndc_client" )
 
 var (
@@ -17,13 +16,12 @@ func init() {
 }
 
 func TestConfigLoad( t *testing.T ) {
-  fmt.Println( "TestConfigLoad", options )
+  t.Log( "TestConfigLoad", options )
 
   var config map[interface{}]interface{}
 
   err := ndc.LoadConfig( options.ConfigPath, &config )
 
-  fmt.Println(len(config))
   if err != nil {
     t.Fatalf("ndc.LoadConfig returned error: %v", err )
   }
@@ -35,7 +33,7 @@ func TestConfigLoad( t *testing.T ) {
 
 func TestClientInit( t *testing.T ) {
   client, err := ndc.NewClient( &options )
-  fmt.Println( "TestClientInit", client )
+  t.Log( "TestClientInit", client )
 
   if err != nil {
     t.Fatalf( "ndc.NewClient returned error: %v", err )
