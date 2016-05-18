@@ -6,7 +6,8 @@ import(
   "time"
   "crypto/sha1"
   "encoding/hex"
-  
+  "strings"
+
   "github.com/clbanning/mxj"
 )
 
@@ -52,9 +53,15 @@ func( message *Message ) ToXml() ( []byte, error ) {
   // Template based body:
 
   bodyMap := mxj.Map( message.Client.Config["ndc"].(map[string]interface{}) )
-  bodyRawXml, _ := bodyMap.XmlIndent( "", "", "_body" )
+  bodyWriter := new(bytes.Buffer)
+  bodyRawBytes, _ := bodyMap.XmlWriterRaw( bodyWriter, "_ndc_body" )
 
-  message.Body = string( bodyRawXml )
+  bodyString := string(bodyRawBytes)
+  bodyString = strings.Replace( bodyString, "<_ndc_body>", "", 1 )
+  bodyString = strings.Replace( bodyString, "</_ndc_body>", "", 1 )
+
+  message.Body = bodyString
+
 
   Map := mxj.Map(message.Params)
 
