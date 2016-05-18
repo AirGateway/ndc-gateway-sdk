@@ -17,7 +17,7 @@ type Message struct {
   XMLNSXSI string `xml:"xmlns:xsi,attr"`
 }
 
-func( message *Message ) ToXml() string {
+func( message *Message ) ToXml() []byte {
 
   message.XMLName.Local = message.Method
   message.XMLNS = "http://www.iata.org/IATA/EDIST"
@@ -25,5 +25,5 @@ func( message *Message ) ToXml() string {
 
   output, _ := xml.MarshalIndent( message, "  ", "    ")
 
-  return string(output)
+  return output
 }
