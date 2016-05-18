@@ -3,7 +3,7 @@ package ndc
 import(
 	"io/ioutil"
 
-	"gopkg.in/yaml.v2"
+	"github.com/matiasinsaurralde/yaml"
 )
 
 const (
@@ -30,20 +30,24 @@ type ClientOptions struct {
 
 type Client struct {
 	Options ClientOptions
-	Config map[interface{}]interface{}
+	Config map[string]interface{}
 }
 
 func NewClient( options *ClientOptions ) ( *Client, error ) {
 	client := &Client{Options: *options}
+	client.Config = make(map[string]interface{})
 	err := LoadConfig( client.Options.ConfigPath, &client.Config )
 	return client, err
 }
 
-func LoadConfig( path string, Config *map[interface{}]interface{} ) error {
+func LoadConfig( path string, Config *map[string]interface{} ) error {
 	RawConfig, err := ioutil.ReadFile( path )
-	err = yaml.Unmarshal( RawConfig, Config )
+	err = yaml.Unmarshal( RawConfig, *Config )
 	return err
 }
 
-func (client *Client) Request(message Message) {
+func (client *Client) Request(message Message) string {
+	message.Client = client
+	output, _ := message.ToXml()
+	return string(output)
 }
