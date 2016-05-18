@@ -2,9 +2,12 @@ package ndc
 
 import(
   "encoding/xml"
-  "github.com/clbanning/mxj"
   "bytes"
   "time"
+  "crypto/sha1"
+  "encoding/hex"
+
+  "github.com/clbanning/mxj"
 )
 
 type Message struct {
@@ -30,8 +33,15 @@ func( message *Message ) ToXml() ( []byte, error ) {
   message.XMLNS = "http://www.iata.org/IATA/EDIST"
   message.XMLNSXSI = "http://www.w3.org/2001/XMLSchema-instance"
 
+  TimeStamp := time.Now().Format(time.RFC3339)
+  EchoToken := sha1.New()
+  EchoToken.Write( []byte(TimeStamp) )
+
   // Should we use? https://github.com/joeshaw/iso8601
-  message.TimeStamp = time.Now().Format(time.RFC3339)
+  message.EchoToken = hex.EncodeToString( EchoToken.Sum(nil) )
+  message.TimeStamp = TimeStamp
+  message.Version = "1.1.5"
+  message.TransactionIdentifier = "TR-00000"
 
   Map := mxj.Map(message.Params)
 
