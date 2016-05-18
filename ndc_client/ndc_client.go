@@ -25,7 +25,7 @@ var NDCSupportedMethods = map[string] struct{} {
 
 type ClientOptions struct {
 	Endpoint string
-	Config string
+	ConfigPath string
 }
 
 type Client struct {
@@ -35,7 +35,7 @@ type Client struct {
 
 func NewClient( options *ClientOptions ) ( *Client, error ) {
 	client := &Client{Options: *options}
-	err := LoadConfig( client.Options.Config, &client.Config )
+	err := LoadConfig( client.Options.ConfigPath, &client.Config )
 	return client, err
 }
 
@@ -45,6 +45,5 @@ func LoadConfig( path string, Config *map[interface{}]interface{} ) error {
 	return err
 }
 
-func (r *Client) SendRequest( Method string, Data string ) {
-  return
+func (client *Client) Request(message Message) {
 }
