@@ -1,5 +1,11 @@
 package ndc
 
+import(
+	"io/ioutil"
+
+	"gopkg.in/yaml.v2"
+)
+
 const (
 	AcceptedContentType string = "application/xml"
 )
@@ -24,16 +30,19 @@ type ClientOptions struct {
 
 type Client struct {
 	Options ClientOptions
+	Config map[interface{}]interface{}
 }
 
-func NewClient( options *ClientOptions ) *Client {
+func NewClient( options *ClientOptions ) ( *Client, error ) {
 	client := &Client{Options: *options}
-	LoadConfig( client.Options.Config )
-	return client
+	err := LoadConfig( client.Options.Config, &client.Config )
+	return client, err
 }
 
-func LoadConfig( path string ) map[string]interface{} {
-	return nil
+func LoadConfig( path string, Config *map[interface{}]interface{} ) error {
+	RawConfig, err := ioutil.ReadFile( path )
+	err = yaml.Unmarshal( RawConfig, Config )
+	return err
 }
 
 func (r *Client) SendRequest( Method string, Data string ) {
