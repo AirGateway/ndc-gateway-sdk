@@ -4,9 +4,6 @@ import( "net/http"
         "fmt"
         "ndc-go-sdk/ndc_client")
 
-var options ndc.ClientOptions
-var client ndc.Client
-
 func ndcHandler( w http.ResponseWriter, r *http.Request ) {
   fmt.Fprintf(w, "Response %s", r.URL.Path[1:])
 
