@@ -17,9 +17,23 @@ var NDCSupportedMethods = map[string] struct{} {
 	"ItinReshopRQ": {},
 }
 
+type ClientOptions struct {
+	Endpoint string
+	Config string
+}
+
 type Client struct {
-  Endpoint string
-  Config string
+	Options ClientOptions
+}
+
+func NewClient( options *ClientOptions ) *Client {
+	client := &Client{Options: *options}
+	LoadConfig( client.Options.Config )
+	return client
+}
+
+func LoadConfig( path string ) map[string]interface{} {
+	return nil
 }
 
 func (r *Client) SendRequest( Method string, Data string ) {
