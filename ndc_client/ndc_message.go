@@ -16,13 +16,13 @@ type Message struct {
   Method string `xml:"-"`
   Params map[string]interface{} `xml:"-"`
 
+  XMLNS string `xml:"xmlns,attr"`
+  XMLNSXSI string `xml:"xmlns:xsi,attr"`
+
   EchoToken string  `xml:"EchoToken,attr"`
   TimeStamp string  `xml:"TimeStamp,attr"`
   Version string  `xml:"Version,attr"`
   TransactionIdentifier string  `xml:"TransactionIdentifier,attr"`
-
-  XMLNS string `xml:"xmlns,attr"`
-  XMLNSXSI string `xml:"xmlns:xsi,attr"`
 }
 
 func( message *Message ) ToXml() ( []byte, error ) {
