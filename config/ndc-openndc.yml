@@ -14,4 +14,15 @@ ndc:
   Document:
     Name: NDC Wrapper
     ReferenceVersion: "1.0"
-
+  Party:
+    Sender:
+      ORA_Sender:
+        AirlineID: C9
+        Name: Kronos Air
+        AgentUser:
+          Name: TravelWadus
+          Type: TravelManagementCompany
+          PseudoCity: A4A
+          AgentUserID: travelwadus
+          IATA_Number: "00002004"
+          
