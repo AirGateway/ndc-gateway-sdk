@@ -28,13 +28,12 @@ type Message struct {
   TransactionIdentifier string  `xml:"TransactionIdentifier,attr"`
 
   Body string `xml:",innerxml"`
+  ParamsBody string `xml:",innerxml"`
 }
 
 func( message *Message ) ToXml() ( []byte, error ) {
 
   // Namespace, etc.
-
-  var XmlWriter = new( bytes.Buffer )
 
   message.XMLName.Local = message.Method
   message.XMLNS = "http://www.iata.org/IATA/EDIST"
@@ -62,10 +61,15 @@ func( message *Message ) ToXml() ( []byte, error ) {
 
   message.Body = bodyString
 
+  // Params:
 
-  Map := mxj.Map(message.Params)
+  paramsWriter := new( bytes.Buffer )
 
-  _, err := Map.XmlWriterRaw(XmlWriter)
+  paramsMap := mxj.Map(message.Params)
+
+  paramsString, err := paramsMap.XmlWriterRaw(paramsWriter)
+
+  message.ParamsBody = string(paramsString)
 
   output, err := xml.MarshalIndent( message, "  ", "    ")
 
