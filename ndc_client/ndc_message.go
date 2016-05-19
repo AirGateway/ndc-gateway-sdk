@@ -7,7 +7,7 @@ import(
   "crypto/sha1"
   "encoding/hex"
   "strings"
-
+  
   "github.com/clbanning/mxj"
 )
 
@@ -33,7 +33,23 @@ type Message struct {
   ParamsBody string `xml:",innerxml"`
 }
 
+type SOAPEnvelope struct {
+  XMLName xml.Name  `xml:"s:Envelope"`
+  Body SOAPBody
+}
+
+type SOAPBody struct {
+  XMLName xml.Name `xml:"s:Body"`
+  // Body string `xml:",innerxml"`
+  Message *Message
+}
+
 func( message *Message ) Prepare() ( []byte, error ) {
+
+  // SOAP
+
+  var SoapEnvelope SOAPEnvelope
+  var SoapBody SOAPBody
 
   message.IsSoap = message.Client.Config["soap"] != nil
 
@@ -42,6 +58,9 @@ func( message *Message ) Prepare() ( []byte, error ) {
   message.XMLName.Local = message.Method
 
   if message.IsSoap {
+    SoapBody = SOAPBody{Message:message}
+    SoapEnvelope = SOAPEnvelope{Body: SoapBody}
+
 
   } else {
     TimeStamp := time.Now().Format(time.RFC3339)
@@ -76,11 +95,17 @@ func( message *Message ) Prepare() ( []byte, error ) {
 
   paramsMap := mxj.Map(message.Params)
 
-  paramsString, err := paramsMap.XmlWriterRaw(paramsWriter)
+  paramsString, _ := paramsMap.XmlWriterRaw(paramsWriter)
 
   message.ParamsBody = string(paramsString)
 
-  output, err := xml.MarshalIndent( message, "  ", "    ")
+  // Final output
 
-  return output, err
+  if message.IsSoap {
+    output, err := xml.MarshalIndent( SoapEnvelope, "  ", "   ")
+    return output, err
+  } else {
+    output, err := xml.MarshalIndent( message, "  ", "    ")
+    return output, err
+  }
 }
