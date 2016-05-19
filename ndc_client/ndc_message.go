@@ -19,35 +19,44 @@ type Message struct {
   Method string `xml:"-"`
   Params map[string]interface{} `xml:"-"`
 
-  XMLNS string `xml:"xmlns,attr"`
-  XMLNSXSI string `xml:"xmlns:xsi,attr"`
+  IsSoap  bool `xml:"-"`
 
-  EchoToken string  `xml:"EchoToken,attr"`
-  TimeStamp string  `xml:"TimeStamp,attr"`
-  Version string  `xml:"Version,attr"`
-  TransactionIdentifier string  `xml:"TransactionIdentifier,attr"`
+  XMLNS string `xml:"xmlns,attr,omitempty"`
+  XMLNSXSI string `xml:"xmlns:xsi,attr,omitempty"`
+
+  EchoToken string  `xml:"EchoToken,attr,omitempty"`
+  TimeStamp string  `xml:"TimeStamp,attr,omitempty"`
+  Version string  `xml:"Version,attr,omitempty"`
+  TransactionIdentifier string  `xml:"TransactionIdentifier,attr,omitempty"`
 
   Body string `xml:",innerxml"`
   ParamsBody string `xml:",innerxml"`
 }
 
-func( message *Message ) ToXml() ( []byte, error ) {
+func( message *Message ) Prepare() ( []byte, error ) {
+
+  message.IsSoap = message.Client.Config["soap"] != nil
 
   // Namespace, etc.
 
   message.XMLName.Local = message.Method
-  message.XMLNS = "http://www.iata.org/IATA/EDIST"
-  message.XMLNSXSI = "http://www.w3.org/2001/XMLSchema-instance"
 
-  TimeStamp := time.Now().Format(time.RFC3339)
-  EchoToken := sha1.New()
-  EchoToken.Write( []byte(TimeStamp) )
+  if message.IsSoap {
 
-  // Should we use? https://github.com/joeshaw/iso8601
-  message.EchoToken = hex.EncodeToString( EchoToken.Sum(nil) )
-  message.TimeStamp = TimeStamp
-  message.Version = "1.1.5"
-  message.TransactionIdentifier = "TR-00000"
+  } else {
+    TimeStamp := time.Now().Format(time.RFC3339)
+    EchoToken := sha1.New()
+    EchoToken.Write( []byte(TimeStamp) )
+
+    message.XMLNS = "http://www.iata.org/IATA/EDIST"
+    message.XMLNSXSI = "http://www.w3.org/2001/XMLSchema-instance"
+
+    // Should we use? https://github.com/joeshaw/iso8601
+    message.EchoToken = hex.EncodeToString( EchoToken.Sum(nil) )
+    message.TimeStamp = TimeStamp
+    message.Version = "1.1.5"
+    message.TransactionIdentifier = "TR-00000"
+  }
 
   // Template based body:
 

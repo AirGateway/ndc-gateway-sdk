@@ -48,6 +48,6 @@ func LoadConfig( path string, Config *map[string]interface{} ) error {
 
 func (client *Client) Request(message Message) string {
 	message.Client = client
-	output, _ := message.ToXml()
+	output, _ := message.Prepare()
 	return string(output)
 }
