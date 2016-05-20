@@ -5,11 +5,14 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/xml"
+	"fmt"
+	"os"
+	"sort"
 	"strings"
 	"time"
-  "fmt"
 
 	"github.com/matiasinsaurralde/mxj"
+	"gopkg.in/yaml.v2"
 )
 
 type Message struct {
@@ -45,26 +48,160 @@ type SOAPBody struct {
 	Message *Message
 }
 
-func InjectSoapAttributes(  RawXml *[]byte, SoapConfig interface{} ) {
+type Person struct {
+	XMLName   xml.Name `xml:"person"`
+	Id        int      `xml:"id,attr"`
+	FirstName string   `xml:"name>first"`
+	LastName  string   `xml:"name>last"`
+	Age       int      `xml:"age"`
+	Height    float32  `xml:"height,omitempty"`
+	Married   bool
+	Comment   string `xml:",comment"`
+}
 
-  xml := string(*RawXml)
+type SoapConfig struct {
+	RequestNamespace  string
+	ResponseNamespace string
+	EnvelopeAttrs     xml.Attr
+	BodyAttrs         xml.Attr
+}
 
-  EnvelopAttributes := SoapConfig.(map[string]interface{})["attributes"].(map[string]interface{})["envelope"]
-  EnvelopTag := fmt.Sprintf( "<s:Envelope %s>", EnvelopAttributes )
+func (message *Message) GetSoapConfig() (config SoapConfig) {
 
-  BodyAttributes := SoapConfig.(map[string]interface{})["attributes"].(map[string]interface{})["body"]
-  BodyTag := fmt.Sprintf( "<s:Body %s>", BodyAttributes )
+	config = SoapConfig{
+		RequestNamespace:  "",
+		ResponseNamespace: "",
+		EnvelopeAttrs:     xml.Attr{},
+		BodyAttrs:         xml.Attr{},
+	}
 
-  xml = strings.Replace( xml, "<s:Envelope>", EnvelopTag, 1 )
-  xml = strings.Replace( xml, "<s:Body>", BodyTag, 1 )
+	var attributes yaml.MapSlice
 
-  // Remove MXJ inserted root tags:
-  xml = strings.Replace( xml, "<_ndc>", "", -1)
-  xml = strings.Replace( xml, "</_ndc>", "", -1)
+	for _, v := range message.Client.Config["soap"] {
+		switch v.Key {
+		case "request_namespace":
+			config.RequestNamespace = v.Value.(string)
+		case "response_namespace":
+			config.ResponseNamespace = v.Value.(string)
+		case "attributes":
+			attributes = v.Value.(yaml.MapSlice)
+		}
+	}
 
-  *RawXml = []byte(xml)
+	for _, attr := range attributes {
+		attrValue := attr.Value.(string)
+		attrValue = strings.Replace(attrValue, "\"", "", -1)
+		switch attr.Key {
+		case "envelope":
+			kv := make([]string, 2)
+			kv = strings.Split(attrValue, "=")
+			config.EnvelopeAttrs = xml.Attr{Name: xml.Name{"", kv[0]}, Value: kv[1]}
+		case "body":
+			kv := make([]string, 2)
+			kv = strings.Split(attrValue, "=")
+			config.BodyAttrs = xml.Attr{Name: xml.Name{"", kv[0]}, Value: kv[1]}
+		}
+	}
 
-  return
+	return
+}
+
+func (message *Message) RenderNDCXML(enc *xml.Encoder, item interface{}, key string, root bool, index int, length int, parentElements []string) {
+
+	if message.IsSoap && root {
+
+		soapConfig := message.GetSoapConfig()
+
+		soapEnvelope := xml.StartElement{
+			Name: xml.Name{"", "s:Envelope"},
+			Attr: []xml.Attr{soapConfig.EnvelopeAttrs},
+		}
+
+		soapBody := xml.StartElement{
+			Name: xml.Name{"", "s:Body"},
+			Attr: []xml.Attr{soapConfig.BodyAttrs},
+		}
+
+		enc.EncodeToken(soapEnvelope)
+		enc.EncodeToken(soapBody)
+	}
+
+	if root {
+		item = item.(yaml.MapSlice)
+		requestWrapper := xml.StartElement{
+			Name: xml.Name{"", message.Method + "RQ"},
+		}
+		enc.EncodeToken(requestWrapper)
+	}
+
+	if parentElements == nil {
+		parentElements = make([]string, 0)
+	}
+
+	t := fmt.Sprintf("%T", item)
+
+	if t == "yaml.MapItem" || t == "yaml.MapSlice" {
+		mapItem := item.(yaml.MapSlice)
+
+		var kItemLen int
+
+		for k, v := range mapItem {
+
+			kItem := mapItem[k].Value
+			kItemT := fmt.Sprintf("%T", kItem)
+
+			if kItemT == "yaml.MapSlice" {
+				kItemLen = len(kItem.(yaml.MapSlice))
+				element := xml.StartElement{
+					Name: xml.Name{"", mapItem[k].Key.(string)},
+					Attr: []xml.Attr{},
+				}
+				parentElements = append(parentElements, mapItem[k].Key.(string))
+				enc.EncodeToken(element)
+
+			} else {
+				kItemLen = length - 1
+			}
+
+			i := v.Value
+
+			message.RenderNDCXML(enc, i, v.Key.(string), false, k, kItemLen, parentElements)
+		}
+
+	} else {
+		element := xml.StartElement{
+			Name: xml.Name{"", key},
+			Attr: []xml.Attr{},
+		}
+
+		var data string
+
+		switch t {
+		case "float64":
+			data = fmt.Sprintf("%.1f", item)
+		case "int":
+			data = fmt.Sprintf("%d", item)
+		default:
+			data = fmt.Sprintf("%s", item)
+		}
+
+		enc.EncodeToken(element)
+		enc.EncodeToken(xml.CharData(data))
+		enc.EncodeToken(element.End())
+
+		if index >= length {
+
+			sort.Sort(sort.Reverse(sort.StringSlice(parentElements)))
+
+			for i := 0; i < len(parentElements); i++ {
+				var e = parentElements[i]
+				if e != "" {
+					enc.EncodeToken(xml.EndElement{xml.Name{"", e}})
+				}
+				parentElements[i] = ""
+			}
+		}
+	}
 }
 
 func (message *Message) Prepare() ([]byte, error) {
@@ -83,7 +220,6 @@ func (message *Message) Prepare() ([]byte, error) {
 	if message.IsSoap {
 		SoapBody = SOAPBody{Message: message}
 		SoapEnvelope = SOAPEnvelope{Body: SoapBody}
-
 	} else {
 		TimeStamp := time.Now().Format(time.RFC3339)
 		EchoToken := sha1.New()
@@ -101,27 +237,55 @@ func (message *Message) Prepare() ([]byte, error) {
 
 	// Template based body:
 
-	bodyMap := mxj.Map(message.Client.Config["ndc"].(map[string]interface{}))
-	bodyWriter := new(bytes.Buffer)
-	bodyRawBytes, _ := bodyMap.XmlWriterRaw(bodyWriter, "_ndc")
+	ndc := message.Client.Config["ndc"]
 
-	message.Body = string(bodyRawBytes)
+	fmt.Println("\n")
+
+	enc := xml.NewEncoder(os.Stdout)
+	enc.Indent(" ", "    ")
+
+	// fmt.Println(xml.Header)
+
+	message.RenderNDCXML(enc, ndc, "", true, -1, -1, nil)
+
+	enc.Flush()
+
+	requestWrapperEnd := xml.EndElement{
+		Name: xml.Name{"", message.Method + "RQ"},
+	}
+
+	soapEnvelopeEnd := xml.EndElement{
+		Name: xml.Name{"", "s:Envelope"},
+	}
+
+	soapBodyEnd := xml.EndElement{
+		Name: xml.Name{"", "s:Body"},
+	}
+
+	enc.EncodeToken(requestWrapperEnd)
+	enc.EncodeToken(soapBodyEnd)
+	enc.EncodeToken(soapEnvelopeEnd)
+
+	enc.Flush()
+
+	fmt.Println("\n")
 
 	// Params:
 
 	paramsWriter := new(bytes.Buffer)
-
 	paramsMap := mxj.Map(message.Params)
-
 	paramsString, _ := paramsMap.XmlWriterRaw(paramsWriter, "_ndc")
 
-	message.ParamsBody = string(paramsString)
+	// message.ParamsBody = string(paramsString)
+
+	if paramsWriter != nil && paramsMap != nil {
+
+	}
 
 	// Final output
 
 	if message.IsSoap {
 		output, err := xml.MarshalIndent(SoapEnvelope, "  ", "   ")
-    InjectSoapAttributes( &output, message.Client.Config["soap"] )
 		return output, err
 	} else {
 		output, err := xml.MarshalIndent(message, "  ", "    ")
