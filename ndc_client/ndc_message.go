@@ -20,6 +20,8 @@ type Message struct {
 
 	Client *Client `xml:"-"`
 
+	SoapConfig SoapConfig
+
 	Method string                 `xml:"-"`
 	Params map[string]interface{} `xml:"-"`
 
@@ -62,7 +64,9 @@ type Person struct {
 type SoapConfig struct {
 	RequestNamespace  string
 	ResponseNamespace string
+	EnvelopeTagName   string
 	EnvelopeAttrs     xml.Attr
+	BodyTagName       string
 	BodyAttrs         xml.Attr
 }
 
@@ -71,6 +75,8 @@ func (message *Message) GetSoapConfig() (config SoapConfig) {
 	config = SoapConfig{
 		RequestNamespace:  "",
 		ResponseNamespace: "",
+		EnvelopeTagName:   "Envelope",
+		BodyTagName:       "Body",
 		EnvelopeAttrs:     xml.Attr{},
 		BodyAttrs:         xml.Attr{},
 	}
@@ -103,6 +109,9 @@ func (message *Message) GetSoapConfig() (config SoapConfig) {
 		}
 	}
 
+	config.EnvelopeTagName = strings.Join([]string{config.RequestNamespace, ":", config.EnvelopeTagName}, "")
+	config.BodyTagName = strings.Join([]string{config.RequestNamespace, ":", config.BodyTagName}, "")
+
 	return
 }
 
@@ -110,16 +119,14 @@ func (message *Message) RenderNDCXML(enc *xml.Encoder, item interface{}, key str
 
 	if message.IsSoap && root {
 
-		soapConfig := message.GetSoapConfig()
-
 		soapEnvelope := xml.StartElement{
-			Name: xml.Name{"", "s:Envelope"},
-			Attr: []xml.Attr{soapConfig.EnvelopeAttrs},
+			Name: xml.Name{"", message.SoapConfig.EnvelopeTagName},
+			Attr: []xml.Attr{message.SoapConfig.EnvelopeAttrs},
 		}
 
 		soapBody := xml.StartElement{
-			Name: xml.Name{"", "s:Body"},
-			Attr: []xml.Attr{soapConfig.BodyAttrs},
+			Name: xml.Name{"", message.SoapConfig.BodyTagName},
+			Attr: []xml.Attr{message.SoapConfig.BodyAttrs},
 		}
 
 		enc.EncodeToken(soapEnvelope)
@@ -213,6 +220,10 @@ func (message *Message) Prepare() ([]byte, error) {
 
 	message.IsSoap = message.Client.Config["soap"] != nil
 
+	if message.IsSoap {
+		message.SoapConfig = message.GetSoapConfig()
+	}
+
 	// Namespace, etc.
 
 	message.XMLName.Local = message.Method + "RQ"
@@ -254,17 +265,21 @@ func (message *Message) Prepare() ([]byte, error) {
 		Name: xml.Name{"", message.Method + "RQ"},
 	}
 
-	soapEnvelopeEnd := xml.EndElement{
-		Name: xml.Name{"", "s:Envelope"},
-	}
-
-	soapBodyEnd := xml.EndElement{
-		Name: xml.Name{"", "s:Body"},
-	}
-
 	enc.EncodeToken(requestWrapperEnd)
-	enc.EncodeToken(soapBodyEnd)
-	enc.EncodeToken(soapEnvelopeEnd)
+
+	if message.IsSoap {
+
+		soapEnvelopeEnd := xml.EndElement{
+			Name: xml.Name{"", message.SoapConfig.EnvelopeTagName},
+		}
+
+		soapBodyEnd := xml.EndElement{
+			Name: xml.Name{"", message.SoapConfig.BodyTagName},
+		}
+
+		enc.EncodeToken(soapBodyEnd)
+		enc.EncodeToken(soapEnvelopeEnd)
+	}
 
 	enc.Flush()
 
@@ -278,7 +293,7 @@ func (message *Message) Prepare() ([]byte, error) {
 
 	// message.ParamsBody = string(paramsString)
 
-	if paramsWriter != nil && paramsMap != nil {
+	if paramsWriter != nil && paramsMap != nil && paramsString != nil {
 
 	}
 
