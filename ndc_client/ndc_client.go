@@ -109,6 +109,10 @@ func (client *Client) Request(message Message) *http.Response {
 
 	body, _ := message.Prepare()
 
+	if body != nil && Config != nil {
+		
+	}
+
 	// fmt.Println(string(body),"\n",Config)
 	// body := ""
 
