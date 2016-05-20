@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"bytes"
 
 	"github.com/matiasinsaurralde/yaml"
 )
@@ -99,7 +100,7 @@ func (client *Client) AppendHeaders(r *http.Request, HeadersConfig interface{}) 
 	}
 }
 
-func (client *Client) Request(message Message) string {
+func (client *Client) Request(message Message) *http.Response {
 
 	var Config map[string]interface{}
 
@@ -114,10 +115,13 @@ func (client *Client) Request(message Message) string {
 	}
 
 	RequestUrl := Config["server"].(map[string]interface{})["url"]
-
-	Request, _ := http.NewRequest("POST", RequestUrl.(string), nil)
+	RequestReader := bytes.NewReader(body)
+	Request, _ := http.NewRequest("POST", RequestUrl.(string), RequestReader)
 
 	client.AppendHeaders(Request, Config["rest"].(map[string]interface{})["headers"])
 
-	return string(body)
+	Response, _ := client.HttpClient.Do( Request )
+	defer Response.Body.Close()
+
+	return nil
 }
