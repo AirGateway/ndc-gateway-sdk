@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"strings"
 	"time"
+  "fmt"
 
 	"github.com/clbanning/mxj"
 )
@@ -42,6 +43,25 @@ type SOAPBody struct {
 	XMLName xml.Name `xml:"s:Body"`
 	// Body string `xml:",innerxml"`
 	Message *Message
+}
+
+func InjectSoapAttributes(  RawXml *[]byte, SoapConfig interface{} ) {
+  fmt.Println( "InjectSoapAttributes")
+
+  xml := string(*RawXml)
+
+  EnvelopAttributes := SoapConfig.(map[string]interface{})["attributes"].(map[string]interface{})["envelope"]
+  EnvelopTag := fmt.Sprintf( "<s:Envelope %s>", EnvelopAttributes )
+
+  BodyAttributes := SoapConfig.(map[string]interface{})["attributes"].(map[string]interface{})["body"]
+  BodyTag := fmt.Sprintf( "<s:Body %s>", BodyAttributes )
+
+  xml = strings.Replace( xml, "<s:Envelope>", EnvelopTag, 1 )
+  xml = strings.Replace( xml, "<s:Body>", BodyTag, 1 )
+
+  *RawXml = []byte(xml)
+
+  return
 }
 
 func (message *Message) Prepare() ([]byte, error) {
@@ -102,6 +122,7 @@ func (message *Message) Prepare() ([]byte, error) {
 
 	if message.IsSoap {
 		output, err := xml.MarshalIndent(SoapEnvelope, "  ", "   ")
+    InjectSoapAttributes( &output, message.Client.Config["soap"] )
 		return output, err
 	} else {
 		output, err := xml.MarshalIndent(message, "  ", "    ")
