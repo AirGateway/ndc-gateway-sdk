@@ -1,43 +1,43 @@
 package ndc
 
-import(
+import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"fmt"
 
 	"github.com/matiasinsaurralde/yaml"
 )
 
-var NDCSupportedMethods = map[string] struct{} {
-	"AirShoppingRQ": {},
-	"FlightPriceRQ": {},
+var NDCSupportedMethods = map[string]struct{}{
+	"AirShoppingRQ":      {},
+	"FlightPriceRQ":      {},
 	"SeatAvailabilityRQ": {},
-	"ServiceListRQ": {},
-	"ServicePriceRQ": {},
-	"OrderCreateRQ": {},
-	"OrderRetrieveRQ": {},
-	"OrderListRQ": {},
-	"OrderCancelRQ": {},
-	"ItinReshopRQ": {},
+	"ServiceListRQ":      {},
+	"ServicePriceRQ":     {},
+	"OrderCreateRQ":      {},
+	"OrderRetrieveRQ":    {},
+	"OrderListRQ":        {},
+	"OrderCancelRQ":      {},
+	"ItinReshopRQ":       {},
 }
 
-var TemplateVars = []string{ "request_name" }
+var TemplateVars = []string{"request_name"}
 
 type ClientOptions struct {
-	Endpoint string
+	Endpoint   string
 	ConfigPath string
 }
 
 type Client struct {
-	Options ClientOptions
+	Options         ClientOptions
 	HasTemplateVars bool
-	Config map[string]interface{}
-	RawConfig []byte
-	HttpClient *http.Client
+	Config          map[string]interface{}
+	RawConfig       []byte
+	HttpClient      *http.Client
 }
 
-func NewClient( options *ClientOptions ) ( *Client, error ) {
+func NewClient(options *ClientOptions) (*Client, error) {
 	client := &Client{Options: *options}
 	client.Config = make(map[string]interface{})
 	client.HttpClient = &http.Client{}
@@ -50,28 +50,28 @@ func ConfigHasTemplateVars(RawConfig *[]byte) int {
 	config := string(*RawConfig)
 	var matches = 0
 	for _, VarName := range TemplateVars {
-		 VarIndex := strings.Index( config, VarName )
-		 if VarIndex > 0 {
-			 matches++
-		 }
+		VarIndex := strings.Index(config, VarName)
+		if VarIndex > 0 {
+			matches++
+		}
 	}
 	return matches
 }
 
 func (client *Client) LoadConfig() error {
-	config, err := ioutil.ReadFile( client.Options.ConfigPath )
+	config, err := ioutil.ReadFile(client.Options.ConfigPath)
 	client.RawConfig = config
-	err = yaml.Unmarshal( client.RawConfig, client.Config )
+	err = yaml.Unmarshal(client.RawConfig, client.Config)
 
-	if ConfigHasTemplateVars( &client.RawConfig ) > 0 {
+	if ConfigHasTemplateVars(&client.RawConfig) > 0 {
 		client.HasTemplateVars = true
 	}
 
 	return err
 }
 
-func (client *Client) PrepareConfig( message Message ) ( Config map[string]interface{} ) {
-	Config = make( map[string]interface{})
+func (client *Client) PrepareConfig(message Message) (Config map[string]interface{}) {
+	Config = make(map[string]interface{})
 	ModifiedConfig := string(client.RawConfig)
 
 	for _, VarName := range TemplateVars {
@@ -79,24 +79,24 @@ func (client *Client) PrepareConfig( message Message ) ( Config map[string]inter
 		var VarValue = ""
 
 		switch VarName {
-			case "request_name":
-				VarValue = message.Method
+		case "request_name":
+			VarValue = message.Method
 
 		}
 
 		VarName = fmt.Sprintf("{{%s}}", VarName)
 
-		ModifiedConfig = strings.Replace( ModifiedConfig, VarName, VarValue, -1 )
+		ModifiedConfig = strings.Replace(ModifiedConfig, VarName, VarValue, -1)
 	}
-	yaml.Unmarshal( []byte(ModifiedConfig) , Config )
+	yaml.Unmarshal([]byte(ModifiedConfig), Config)
 	return
 }
 
-func (client *Client) AppendHeaders( r *http.Request, HeadersConfig interface{} ) {
-		headers := HeadersConfig.(map[string]interface{})
-		for Header, Value := range headers {
-			r.Header.Add( Header, Value.(string) )
-		}
+func (client *Client) AppendHeaders(r *http.Request, HeadersConfig interface{}) {
+	headers := HeadersConfig.(map[string]interface{})
+	for Header, Value := range headers {
+		r.Header.Add(Header, Value.(string))
+	}
 }
 
 func (client *Client) Request(message Message) string {
@@ -108,16 +108,16 @@ func (client *Client) Request(message Message) string {
 	body, _ := message.Prepare()
 
 	if client.HasTemplateVars {
-		Config = client.PrepareConfig( message )
+		Config = client.PrepareConfig(message)
 	} else {
 		Config = client.Config
 	}
 
 	RequestUrl := Config["server"].(map[string]interface{})["url"]
 
-	Request, _ := http.NewRequest( "POST", RequestUrl.(string), nil )
+	Request, _ := http.NewRequest("POST", RequestUrl.(string), nil)
 
-	client.AppendHeaders( Request, Config["rest"].(map[string]interface{})["headers"] )
+	client.AppendHeaders(Request, Config["rest"].(map[string]interface{})["headers"])
 
 	return string(body)
 }

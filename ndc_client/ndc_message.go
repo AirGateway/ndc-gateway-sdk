@@ -1,111 +1,110 @@
 package ndc
 
-import(
-  "encoding/xml"
-  "bytes"
-  "time"
-  "crypto/sha1"
-  "encoding/hex"
-  "strings"
+import (
+	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
+	"encoding/xml"
+	"strings"
+	"time"
 
-  "github.com/clbanning/mxj"
+	"github.com/clbanning/mxj"
 )
 
 type Message struct {
-  XMLName xml.Name
+	XMLName xml.Name
 
-  Client *Client `xml:"-"`
+	Client *Client `xml:"-"`
 
-  Method string `xml:"-"`
-  Params map[string]interface{} `xml:"-"`
+	Method string                 `xml:"-"`
+	Params map[string]interface{} `xml:"-"`
 
-  IsSoap  bool `xml:"-"`
+	IsSoap bool `xml:"-"`
 
-  XMLNS string `xml:"xmlns,attr,omitempty"`
-  XMLNSXSI string `xml:"xmlns:xsi,attr,omitempty"`
+	XMLNS    string `xml:"xmlns,attr,omitempty"`
+	XMLNSXSI string `xml:"xmlns:xsi,attr,omitempty"`
 
-  EchoToken string  `xml:"EchoToken,attr,omitempty"`
-  TimeStamp string  `xml:"TimeStamp,attr,omitempty"`
-  Version string  `xml:"Version,attr,omitempty"`
-  TransactionIdentifier string  `xml:"TransactionIdentifier,attr,omitempty"`
+	EchoToken             string `xml:"EchoToken,attr,omitempty"`
+	TimeStamp             string `xml:"TimeStamp,attr,omitempty"`
+	Version               string `xml:"Version,attr,omitempty"`
+	TransactionIdentifier string `xml:"TransactionIdentifier,attr,omitempty"`
 
-  Body string `xml:",innerxml"`
-  ParamsBody string `xml:",innerxml"`
+	Body       string `xml:",innerxml"`
+	ParamsBody string `xml:",innerxml"`
 }
 
 type SOAPEnvelope struct {
-  XMLName xml.Name  `xml:"s:Envelope"`
-  Body SOAPBody
+	XMLName xml.Name `xml:"s:Envelope"`
+	Body    SOAPBody
 }
 
 type SOAPBody struct {
-  XMLName xml.Name `xml:"s:Body"`
-  // Body string `xml:",innerxml"`
-  Message *Message
+	XMLName xml.Name `xml:"s:Body"`
+	// Body string `xml:",innerxml"`
+	Message *Message
 }
 
-func( message *Message ) Prepare() ( []byte, error ) {
+func (message *Message) Prepare() ([]byte, error) {
 
-  // SOAP
+	// SOAP
 
-  var SoapEnvelope SOAPEnvelope
-  var SoapBody SOAPBody
+	var SoapEnvelope SOAPEnvelope
+	var SoapBody SOAPBody
 
-  message.IsSoap = message.Client.Config["soap"] != nil
+	message.IsSoap = message.Client.Config["soap"] != nil
 
-  // Namespace, etc.
+	// Namespace, etc.
 
-  message.XMLName.Local = message.Method + "RQ"
+	message.XMLName.Local = message.Method + "RQ"
 
-  if message.IsSoap {
-    SoapBody = SOAPBody{Message:message}
-    SoapEnvelope = SOAPEnvelope{Body: SoapBody}
+	if message.IsSoap {
+		SoapBody = SOAPBody{Message: message}
+		SoapEnvelope = SOAPEnvelope{Body: SoapBody}
 
+	} else {
+		TimeStamp := time.Now().Format(time.RFC3339)
+		EchoToken := sha1.New()
+		EchoToken.Write([]byte(TimeStamp))
 
-  } else {
-    TimeStamp := time.Now().Format(time.RFC3339)
-    EchoToken := sha1.New()
-    EchoToken.Write( []byte(TimeStamp) )
+		message.XMLNS = "http://www.iata.org/IATA/EDIST"
+		message.XMLNSXSI = "http://www.w3.org/2001/XMLSchema-instance"
 
-    message.XMLNS = "http://www.iata.org/IATA/EDIST"
-    message.XMLNSXSI = "http://www.w3.org/2001/XMLSchema-instance"
+		// Should we use? https://github.com/joeshaw/iso8601
+		message.EchoToken = hex.EncodeToString(EchoToken.Sum(nil))
+		message.TimeStamp = TimeStamp
+		message.Version = "1.1.5"
+		message.TransactionIdentifier = "TR-00000"
+	}
 
-    // Should we use? https://github.com/joeshaw/iso8601
-    message.EchoToken = hex.EncodeToString( EchoToken.Sum(nil) )
-    message.TimeStamp = TimeStamp
-    message.Version = "1.1.5"
-    message.TransactionIdentifier = "TR-00000"
-  }
+	// Template based body:
 
-  // Template based body:
+	bodyMap := mxj.Map(message.Client.Config["ndc"].(map[string]interface{}))
+	bodyWriter := new(bytes.Buffer)
+	bodyRawBytes, _ := bodyMap.XmlWriterRaw(bodyWriter, "_ndc_body")
 
-  bodyMap := mxj.Map( message.Client.Config["ndc"].(map[string]interface{}) )
-  bodyWriter := new(bytes.Buffer)
-  bodyRawBytes, _ := bodyMap.XmlWriterRaw( bodyWriter, "_ndc_body" )
+	bodyString := string(bodyRawBytes)
+	bodyString = strings.Replace(bodyString, "<_ndc_body>", "", 1)
+	bodyString = strings.Replace(bodyString, "</_ndc_body>", "", 1)
 
-  bodyString := string(bodyRawBytes)
-  bodyString = strings.Replace( bodyString, "<_ndc_body>", "", 1 )
-  bodyString = strings.Replace( bodyString, "</_ndc_body>", "", 1 )
+	message.Body = bodyString
 
-  message.Body = bodyString
+	// Params:
 
-  // Params:
+	paramsWriter := new(bytes.Buffer)
 
-  paramsWriter := new( bytes.Buffer )
+	paramsMap := mxj.Map(message.Params)
 
-  paramsMap := mxj.Map(message.Params)
+	paramsString, _ := paramsMap.XmlWriterRaw(paramsWriter)
 
-  paramsString, _ := paramsMap.XmlWriterRaw(paramsWriter)
+	message.ParamsBody = string(paramsString)
 
-  message.ParamsBody = string(paramsString)
+	// Final output
 
-  // Final output
-
-  if message.IsSoap {
-    output, err := xml.MarshalIndent( SoapEnvelope, "  ", "   ")
-    return output, err
-  } else {
-    output, err := xml.MarshalIndent( message, "  ", "    ")
-    return output, err
-  }
+	if message.IsSoap {
+		output, err := xml.MarshalIndent(SoapEnvelope, "  ", "   ")
+		return output, err
+	} else {
+		output, err := xml.MarshalIndent(message, "  ", "    ")
+		return output, err
+	}
 }
