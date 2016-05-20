@@ -1,7 +1,7 @@
 package ndc
 
 import (
-	"bytes"
+	// "bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/xml"
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/matiasinsaurralde/mxj"
+	// "github.com/matiasinsaurralde/mxj"
 	"gopkg.in/yaml.v2"
 )
 
@@ -20,10 +20,10 @@ type Message struct {
 
 	Client *Client `xml:"-"`
 
-	SoapConfig SoapConfig
+  SoapConfig SoapConfig
 
 	Method string                 `xml:"-"`
-	Params map[string]interface{} `xml:"-"`
+	Params Params `xml:"-"`
 
 	IsSoap bool `xml:"-"`
 
@@ -50,24 +50,18 @@ type SOAPBody struct {
 	Message *Message
 }
 
-type Person struct {
-	XMLName   xml.Name `xml:"person"`
-	Id        int      `xml:"id,attr"`
-	FirstName string   `xml:"name>first"`
-	LastName  string   `xml:"name>last"`
-	Age       int      `xml:"age"`
-	Height    float32  `xml:"height,omitempty"`
-	Married   bool
-	Comment   string `xml:",comment"`
-}
-
 type SoapConfig struct {
 	RequestNamespace  string
 	ResponseNamespace string
-	EnvelopeTagName   string
+  EnvelopeTagName string
 	EnvelopeAttrs     xml.Attr
-	BodyTagName       string
+  BodyTagName string
 	BodyAttrs         xml.Attr
+}
+
+type Params []Param
+type Param struct {
+  Key, Value interface{}
 }
 
 func (message *Message) GetSoapConfig() (config SoapConfig) {
@@ -75,8 +69,8 @@ func (message *Message) GetSoapConfig() (config SoapConfig) {
 	config = SoapConfig{
 		RequestNamespace:  "",
 		ResponseNamespace: "",
-		EnvelopeTagName:   "Envelope",
-		BodyTagName:       "Body",
+    EnvelopeTagName: "Envelope",
+    BodyTagName: "Body",
 		EnvelopeAttrs:     xml.Attr{},
 		BodyAttrs:         xml.Attr{},
 	}
@@ -109,8 +103,8 @@ func (message *Message) GetSoapConfig() (config SoapConfig) {
 		}
 	}
 
-	config.EnvelopeTagName = strings.Join([]string{config.RequestNamespace, ":", config.EnvelopeTagName}, "")
-	config.BodyTagName = strings.Join([]string{config.RequestNamespace, ":", config.BodyTagName}, "")
+  config.EnvelopeTagName = strings.Join( []string{config.RequestNamespace, ":", config.EnvelopeTagName}, "" )
+  config.BodyTagName = strings.Join( []string{config.RequestNamespace, ":", config.BodyTagName}, "" )
 
 	return
 }
@@ -148,6 +142,7 @@ func (message *Message) RenderNDCXML(enc *xml.Encoder, item interface{}, key str
 	t := fmt.Sprintf("%T", item)
 
 	if t == "yaml.MapItem" || t == "yaml.MapSlice" {
+
 		mapItem := item.(yaml.MapSlice)
 
 		var kItemLen int
@@ -220,9 +215,9 @@ func (message *Message) Prepare() ([]byte, error) {
 
 	message.IsSoap = message.Client.Config["soap"] != nil
 
-	if message.IsSoap {
-		message.SoapConfig = message.GetSoapConfig()
-	}
+  if message.IsSoap {
+    message.SoapConfig = message.GetSoapConfig()
+  }
 
 	// Namespace, etc.
 
@@ -259,27 +254,29 @@ func (message *Message) Prepare() ([]byte, error) {
 
 	message.RenderNDCXML(enc, ndc, "", true, -1, -1, nil)
 
+  message.RenderNDCXML(enc, message.Params, "", false, -1, -1, nil)
+
 	enc.Flush()
 
 	requestWrapperEnd := xml.EndElement{
 		Name: xml.Name{"", message.Method + "RQ"},
 	}
 
-	enc.EncodeToken(requestWrapperEnd)
+  enc.EncodeToken(requestWrapperEnd)
 
-	if message.IsSoap {
+  if message.IsSoap {
 
-		soapEnvelopeEnd := xml.EndElement{
-			Name: xml.Name{"", message.SoapConfig.EnvelopeTagName},
-		}
+	   soapEnvelopeEnd := xml.EndElement{
+		     Name: xml.Name{"", message.SoapConfig.EnvelopeTagName},
+	      }
 
-		soapBodyEnd := xml.EndElement{
-			Name: xml.Name{"", message.SoapConfig.BodyTagName},
-		}
+	       soapBodyEnd := xml.EndElement{
+		         Name: xml.Name{"", message.SoapConfig.BodyTagName},
+	      }
 
-		enc.EncodeToken(soapBodyEnd)
-		enc.EncodeToken(soapEnvelopeEnd)
-	}
+	enc.EncodeToken(soapBodyEnd)
+	enc.EncodeToken(soapEnvelopeEnd)
+}
 
 	enc.Flush()
 
@@ -287,15 +284,15 @@ func (message *Message) Prepare() ([]byte, error) {
 
 	// Params:
 
+  /*
 	paramsWriter := new(bytes.Buffer)
 	paramsMap := mxj.Map(message.Params)
 	paramsString, _ := paramsMap.XmlWriterRaw(paramsWriter, "_ndc")
 
+  fmt.Println(string(paramsString))
+  */
+
 	// message.ParamsBody = string(paramsString)
-
-	if paramsWriter != nil && paramsMap != nil && paramsString != nil {
-
-	}
 
 	// Final output
 
