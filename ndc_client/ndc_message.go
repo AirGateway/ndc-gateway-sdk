@@ -7,7 +7,7 @@ import(
   "crypto/sha1"
   "encoding/hex"
   "strings"
-  
+
   "github.com/clbanning/mxj"
 )
 
@@ -55,7 +55,7 @@ func( message *Message ) Prepare() ( []byte, error ) {
 
   // Namespace, etc.
 
-  message.XMLName.Local = message.Method
+  message.XMLName.Local = message.Method + "RQ"
 
   if message.IsSoap {
     SoapBody = SOAPBody{Message:message}
