@@ -17,9 +17,31 @@ import "github.com/open-ndc/ndc-go-sdk"
 
 func main() {
 
-  client := ndc.Client{
-    Config: "config/ndc-iata-kronos.yml",
+  client, err := ndc.NewClient(ndc.ClientOptions{
+    ConfigPath: "config/ndc-openndc.yml"
+  })
+
+  params := map[string]interface{}{
+   "CoreQuery": map[string]interface{}{
+      "OriginDestinations": map[string]interface{}{
+        "OriginDestination": map[string]interface{} {
+          "Departure": map[string]interface{} {
+            "AirportCode": "LHR",
+            "Date": "2016-05-20",
+          },
+          "Arrival": map[string]interface{} {
+            "AirportCode": "JFK",
+          },
+        },
+      },
+    },
   }
+
+  response := client.Request(ndc.Message{
+    Method: "AirShopping",
+    Params: params,
+  })
+
 }
 
 ```
