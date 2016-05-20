@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"bytes"
+	// "bytes"
 
-	"github.com/matiasinsaurralde/yaml"
+	"gopkg.in/yaml.v2"
 )
 
 var NDCSupportedMethods = map[string]struct{}{
@@ -33,14 +33,14 @@ type ClientOptions struct {
 type Client struct {
 	Options         ClientOptions
 	HasTemplateVars bool
-	Config          map[string]interface{}
+	Config          map[string]yaml.MapSlice
 	RawConfig       []byte
 	HttpClient      *http.Client
 }
 
 func NewClient(options *ClientOptions) (*Client, error) {
 	client := &Client{Options: *options}
-	client.Config = make(map[string]interface{})
+	client.Config = map[string]yaml.MapSlice{}
 	client.HttpClient = &http.Client{}
 	client.HasTemplateVars = false
 	err := client.LoadConfig()
@@ -62,7 +62,7 @@ func ConfigHasTemplateVars(RawConfig *[]byte) int {
 func (client *Client) LoadConfig() error {
 	config, err := ioutil.ReadFile(client.Options.ConfigPath)
 	client.RawConfig = config
-	err = yaml.Unmarshal(client.RawConfig, client.Config)
+	err = yaml.Unmarshal(client.RawConfig, &client.Config)
 
 	if ConfigHasTemplateVars(&client.RawConfig) > 0 {
 		client.HasTemplateVars = true
@@ -73,6 +73,7 @@ func (client *Client) LoadConfig() error {
 
 func (client *Client) PrepareConfig(message Message) (Config map[string]interface{}) {
 	Config = make(map[string]interface{})
+
 	ModifiedConfig := string(client.RawConfig)
 
 	for _, VarName := range TemplateVars {
@@ -108,20 +109,28 @@ func (client *Client) Request(message Message) *http.Response {
 
 	body, _ := message.Prepare()
 
-	if client.HasTemplateVars {
-		Config = client.PrepareConfig(message)
-	} else {
-		Config = client.Config
-	}
+	// fmt.Println(string(body),"\n",Config)
+	// body := ""
 
-	RequestUrl := Config["server"].(map[string]interface{})["url"]
-	RequestReader := bytes.NewReader(body)
-	Request, _ := http.NewRequest("POST", RequestUrl.(string), RequestReader)
+	// if client.HasTemplateVars {
+	// Config = client.PrepareConfig(message)
+	// } else {
+	// Config = client.Config
+	// }
 
-	client.AppendHeaders(Request, Config["rest"].(map[string]interface{})["headers"])
+	/*
+		RequestUrl := Config["server"].(map[string]interface{})["url"]
+		RequestReader := bytes.NewReader(body)
+		Request, _ := http.NewRequest("POST", RequestUrl.(string), RequestReader)
+		fmt.Println("body", string(body))
+		client.AppendHeaders(Request, Config["rest"].(map[string]interface{})["headers"])
 
-	Response, _ := client.HttpClient.Do( Request )
-	defer Response.Body.Close()
+		fmt.Println(Request)
+
+		Response, _ := client.HttpClient.Do( Request )
+		defer Response.Body.Close()
+
+		fmt.Println(Response)*/
 
 	return nil
 }
