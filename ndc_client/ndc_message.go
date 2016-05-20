@@ -9,7 +9,7 @@ import (
 	"time"
   "fmt"
 
-	"github.com/clbanning/mxj"
+	"github.com/matiasinsaurralde/mxj"
 )
 
 type Message struct {
@@ -46,7 +46,6 @@ type SOAPBody struct {
 }
 
 func InjectSoapAttributes(  RawXml *[]byte, SoapConfig interface{} ) {
-  fmt.Println( "InjectSoapAttributes")
 
   xml := string(*RawXml)
 
@@ -58,6 +57,10 @@ func InjectSoapAttributes(  RawXml *[]byte, SoapConfig interface{} ) {
 
   xml = strings.Replace( xml, "<s:Envelope>", EnvelopTag, 1 )
   xml = strings.Replace( xml, "<s:Body>", BodyTag, 1 )
+
+  // Remove MXJ inserted root tags:
+  xml = strings.Replace( xml, "<_ndc>", "", -1)
+  xml = strings.Replace( xml, "</_ndc>", "", -1)
 
   *RawXml = []byte(xml)
 
@@ -100,13 +103,9 @@ func (message *Message) Prepare() ([]byte, error) {
 
 	bodyMap := mxj.Map(message.Client.Config["ndc"].(map[string]interface{}))
 	bodyWriter := new(bytes.Buffer)
-	bodyRawBytes, _ := bodyMap.XmlWriterRaw(bodyWriter, "_ndc_body")
+	bodyRawBytes, _ := bodyMap.XmlWriterRaw(bodyWriter, "_ndc")
 
-	bodyString := string(bodyRawBytes)
-	bodyString = strings.Replace(bodyString, "<_ndc_body>", "", 1)
-	bodyString = strings.Replace(bodyString, "</_ndc_body>", "", 1)
-
-	message.Body = bodyString
+	message.Body = string(bodyRawBytes)
 
 	// Params:
 
@@ -114,7 +113,7 @@ func (message *Message) Prepare() ([]byte, error) {
 
 	paramsMap := mxj.Map(message.Params)
 
-	paramsString, _ := paramsMap.XmlWriterRaw(paramsWriter)
+	paramsString, _ := paramsMap.XmlWriterRaw(paramsWriter, "_ndc")
 
 	message.ParamsBody = string(paramsString)
 
@@ -128,4 +127,5 @@ func (message *Message) Prepare() ([]byte, error) {
 		output, err := xml.MarshalIndent(message, "  ", "    ")
 		return output, err
 	}
+
 }
