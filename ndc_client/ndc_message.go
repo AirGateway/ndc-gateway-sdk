@@ -114,7 +114,7 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 
 	if parentElements == nil {
 		parentElements = make([]string, 0)
-  }
+	}
 
 	element := xml.StartElement{
 		Name: xml.Name{"", key},
@@ -127,12 +127,11 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 
 		ItemLength := len(Items)
 
-    if key != "" {
+		if key != "" {
 
-      enc.EncodeToken(element)
-		  parentElements = append(parentElements, key)
-    }
-
+			enc.EncodeToken(element)
+			parentElements = append(parentElements, key)
+		}
 
 		for k, v := range Items {
 
@@ -149,7 +148,7 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 		}
 	default:
 
-    enc.EncodeToken(element)
+		enc.EncodeToken(element)
 
 		var data string
 
@@ -167,20 +166,20 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 
 	}
 
-  if index >= length - 1 {
+	if index >= length-1 {
 
-    if len( parentElements ) > 0  {
-      lastElement := parentElements[len(parentElements)-1]
+		if len(parentElements) > 0 {
+			lastElement := parentElements[len(parentElements)-1]
 
-      enc.EncodeToken(xml.EndElement{xml.Name{"", lastElement}})
+			enc.EncodeToken(xml.EndElement{xml.Name{"", lastElement}})
 
-      if len(parentElements) <= 2 {
-        rootElement := parentElements[0]
-        enc.EncodeToken(xml.EndElement{xml.Name{"", rootElement}})
-      }
+			if len(parentElements) <= 2 {
+				rootElement := parentElements[0]
+				enc.EncodeToken(xml.EndElement{xml.Name{"", rootElement}})
+			}
 
-    }
-  }
+		}
+	}
 
 	return
 }
