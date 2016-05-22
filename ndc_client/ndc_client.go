@@ -1,11 +1,11 @@
 package ndc
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
-	// "bytes"
 
 	"gopkg.in/yaml.v2"
 )
@@ -58,6 +58,22 @@ func ConfigHasTemplateVars(RawConfig *[]byte) int {
 	return matches
 }
 
+func MapSliceToMap(slice yaml.MapSlice, m map[string]interface{}) map[string]interface{} {
+	if m == nil {
+		m = make(map[string]interface{})
+	}
+	for _, entry := range slice {
+		switch entry.Value.(type) {
+		case yaml.MapSlice:
+			m[fmt.Sprint(entry.Key)] = MapSliceToMap(entry.Value.(yaml.MapSlice), nil)
+		default:
+			m[fmt.Sprint(entry.Key)] = fmt.Sprint(entry.Value)
+		}
+	}
+
+	return m
+}
+
 func (client *Client) LoadConfig() error {
 	config, err := ioutil.ReadFile(client.Options.ConfigPath)
 	client.RawConfig = config
@@ -71,7 +87,6 @@ func (client *Client) LoadConfig() error {
 }
 
 func (client *Client) PrepareConfig(message Message) (Config map[string]interface{}) {
-	Config = make(map[string]interface{})
 
 	ModifiedConfig := string(client.RawConfig)
 
@@ -89,7 +104,12 @@ func (client *Client) PrepareConfig(message Message) (Config map[string]interfac
 
 		ModifiedConfig = strings.Replace(ModifiedConfig, VarName, VarValue, -1)
 	}
-	yaml.Unmarshal([]byte(ModifiedConfig), Config)
+
+	ConfigMapSlice := yaml.MapSlice{}
+	yaml.Unmarshal([]byte(ModifiedConfig), &ConfigMapSlice)
+
+	Config = MapSliceToMap(ConfigMapSlice, nil)
+
 	return
 }
 
@@ -102,38 +122,28 @@ func (client *Client) AppendHeaders(r *http.Request, HeadersConfig interface{}) 
 
 func (client *Client) Request(message Message) *http.Response {
 
-	var Config map[string]interface{}
+	var Config, ServerConfig, RestConfig map[string]interface{}
 
 	message.Client = client
 
 	body, _ := message.Prepare()
 
-	if body != nil && Config != nil {
-
+	if client.HasTemplateVars {
+		Config = client.PrepareConfig(message)
+	} else {
+		// Config = client.Config
 	}
 
-	// fmt.Println(string(body),"\n",Config)
-	// body := ""
+	ServerConfig = Config["server"].(map[string]interface{})
+	RestConfig = Config["rest"].(map[string]interface{})
 
-	// if client.HasTemplateVars {
-	// Config = client.PrepareConfig(message)
-	// } else {
-	// Config = client.Config
-	// }
+	RequestUrl := ServerConfig["url"]
+	RequestReader := bytes.NewReader(body)
+	Request, _ := http.NewRequest("POST", RequestUrl.(string), RequestReader)
 
-	/*
-		RequestUrl := Config["server"].(map[string]interface{})["url"]
-		RequestReader := bytes.NewReader(body)
-		Request, _ := http.NewRequest("POST", RequestUrl.(string), RequestReader)
-		fmt.Println("body", string(body))
-		client.AppendHeaders(Request, Config["rest"].(map[string]interface{})["headers"])
+	client.AppendHeaders(Request, RestConfig["headers"])
 
-		fmt.Println(Request)
+	Response, _ := client.HttpClient.Do(Request)
 
-		Response, _ := client.HttpClient.Do( Request )
-		defer Response.Body.Close()
-
-		fmt.Println(Response)*/
-
-	return nil
+	return Response
 }
