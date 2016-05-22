@@ -114,7 +114,7 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 
 	if parentElements == nil {
 		parentElements = make([]string, 0)
-	}
+  }
 
 	element := xml.StartElement{
 		Name: xml.Name{"", key},
@@ -141,7 +141,6 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 
 			if ItemType == "ndc.Param" {
 				Item := v.Value.(Param)
-
 				message.RenderNDCParams(enc, Item.Value, Item.Key.(string), k, ItemLength, parentElements)
 			} else {
 				message.RenderNDCParams(enc, v.Value, v.Key.(string), k, ItemLength, parentElements)
@@ -169,18 +168,17 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 	}
 
   if index >= length - 1 {
-    reverseElements := make([]string, 0)
 
-    for i := len(parentElements) - 1; len(reverseElements) != len(parentElements) && i >= 0; i-- {
-      element := parentElements[i]
-      if element != "" {
-        reverseElements = append(reverseElements, element)
-      }
-    }
-
-    if len( parentElements ) > 0 {
+    if len( parentElements ) > 0  {
       lastElement := parentElements[len(parentElements)-1]
+
       enc.EncodeToken(xml.EndElement{xml.Name{"", lastElement}})
+
+      if len(parentElements) <= 2 {
+        rootElement := parentElements[0]
+        enc.EncodeToken(xml.EndElement{xml.Name{"", rootElement}})
+      }
+
     }
   }
 
