@@ -116,14 +116,10 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 		parentElements = make([]string, 0)
 	}
 
-	// enc.EncodeToken(element)
-
 	element := xml.StartElement{
 		Name: xml.Name{"", key},
 		Attr: []xml.Attr{},
 	}
-
-	enc.EncodeToken(element)
 
 	switch t {
 	case "ndc.Params":
@@ -131,7 +127,12 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 
 		ItemLength := len(Items)
 
-		parentElements = append(parentElements, key)
+    if key != "" {
+
+      enc.EncodeToken(element)
+		  parentElements = append(parentElements, key)
+    }
+
 
 		for k, v := range Items {
 
@@ -149,6 +150,8 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 		}
 	default:
 
+    enc.EncodeToken(element)
+
 		var data string
 
 		switch t {
@@ -165,24 +168,21 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 
 	}
 
-	if index >= length-1 && len(parentElements) > 0 {
-		reverseElements := make([]string, 0)
-		for i := len(parentElements) - 1; len(reverseElements) != len(parentElements) && i >= 0; i-- {
-			element := parentElements[i]
-			if element != "" {
-				reverseElements = append(reverseElements, element)
-			}
-		}
+  if index >= length - 1 {
+    reverseElements := make([]string, 0)
 
-		for i := 0; i < len(reverseElements); i++ {
-			var e = reverseElements[i]
-			if e != "" {
-				enc.EncodeToken(xml.EndElement{xml.Name{"", e}})
-			}
-			// parentElements[i] = ""
-			reverseElements[i] = ""
-		}
-	}
+    for i := len(parentElements) - 1; len(reverseElements) != len(parentElements) && i >= 0; i-- {
+      element := parentElements[i]
+      if element != "" {
+        reverseElements = append(reverseElements, element)
+      }
+    }
+
+    if len( parentElements ) > 0 {
+      lastElement := parentElements[len(parentElements)-1]
+      enc.EncodeToken(xml.EndElement{xml.Name{"", lastElement}})
+    }
+  }
 
 	return
 }
@@ -344,6 +344,7 @@ func (message *Message) Prepare() ([]byte, error) {
 
 	enc := xml.NewEncoder(encBuffer)
 	enc.Indent(" ", "    ")
+
 	message.RenderNDCWrapper(enc, encBuffer, ndc, "", true, -1, -1, nil)
 
 	message.RenderNDCWrapper(enc, encBuffer, message.Params, "", false, -1, -1, nil)
