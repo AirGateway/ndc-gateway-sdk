@@ -1,13 +1,13 @@
 package ndc
 
 import (
-	// "bytes"
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
-	"os"
-	"sort"
+	// "os"
+	// "sort"
 	"strings"
 	"time"
 
@@ -59,6 +59,7 @@ type SoapConfig struct {
 	BodyAttrs         xml.Attr
 }
 
+
 type Params []Param
 type Param struct {
   Key, Value interface{}
@@ -109,7 +110,87 @@ func (message *Message) GetSoapConfig() (config SoapConfig) {
 	return
 }
 
-func (message *Message) RenderNDCXML(enc *xml.Encoder, item interface{}, key string, root bool, index int, length int, parentElements []string) {
+func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key string, index int, length int, parentElements []string) {
+  t := fmt.Sprintf("%T", item)
+
+  if parentElements == nil {
+    parentElements = make([]string, 0)
+  }
+
+  // enc.EncodeToken(element)
+
+  element := xml.StartElement{
+    Name: xml.Name{"", key},
+    Attr: []xml.Attr{},
+  }
+
+  enc.EncodeToken(element)
+
+  switch t {
+  case "ndc.Params":
+      Items := item.(Params)
+
+      ItemLength := len(Items)
+
+      parentElements = append(parentElements, key)
+
+      for k, v := range Items {
+
+        Item := Items[k].Value
+        ItemType := fmt.Sprintf("%T", Item)
+
+
+        if ItemType == "ndc.Param" {
+          Item := v.Value.(Param)
+
+          message.RenderNDCParams( enc, Item.Value, Item.Key.(string), k, ItemLength , parentElements )
+        } else {
+          message.RenderNDCParams(enc, v.Value, v.Key.(string), k, ItemLength, parentElements )
+        }
+
+      }
+  default:
+
+    var data string
+
+    switch t {
+    case "float64":
+      data = fmt.Sprintf("%.1f", item)
+    case "int":
+      data = fmt.Sprintf("%d", item)
+    default:
+      data = fmt.Sprintf("%s", item)
+    }
+
+    enc.EncodeToken(xml.CharData(data))
+    enc.EncodeToken(element.End())
+
+
+  }
+
+  if index >= length - 1 && len(parentElements) > 0 {
+    reverseElements := make([]string, 0)
+    for i := len(parentElements)-1; len(reverseElements) != len(parentElements) && i >= 0; i-- {
+      element := parentElements[i]
+      if element != "" {
+        reverseElements = append( reverseElements, element )
+      }
+    }
+
+      for i := 0; i < len(reverseElements); i++ {
+        var e = reverseElements[i]
+        if e != "" {
+            enc.EncodeToken(xml.EndElement{xml.Name{"", e}})
+          }
+          // parentElements[i] = ""
+          reverseElements[i] = ""
+        }
+      }
+
+  return
+}
+
+func (message *Message) RenderNDCWrapper(enc *xml.Encoder, buf *bytes.Buffer, item interface{}, key string, root bool, index int, length int, parentElements []string) {
 
 	if message.IsSoap && root {
 
@@ -141,6 +222,7 @@ func (message *Message) RenderNDCXML(enc *xml.Encoder, item interface{}, key str
 
 	t := fmt.Sprintf("%T", item)
 
+
 	if t == "yaml.MapItem" || t == "yaml.MapSlice" {
 
 		mapItem := item.(yaml.MapSlice)
@@ -167,7 +249,7 @@ func (message *Message) RenderNDCXML(enc *xml.Encoder, item interface{}, key str
 
 			i := v.Value
 
-			message.RenderNDCXML(enc, i, v.Key.(string), false, k, kItemLen, parentElements)
+			message.RenderNDCWrapper(enc, buf, i, v.Key.(string), false, k, kItemLen, parentElements)
 		}
 
 	} else {
@@ -183,6 +265,23 @@ func (message *Message) RenderNDCXML(enc *xml.Encoder, item interface{}, key str
 			data = fmt.Sprintf("%.1f", item)
 		case "int":
 			data = fmt.Sprintf("%d", item)
+    case "ndc.Param":
+      data = "ndc_param"
+    case "ndc.Params":
+      // data = "ndc_params"
+      var paramsBuffer = new(bytes.Buffer)
+      paramsEncoder := xml.NewEncoder(paramsBuffer)
+      paramsEncoder.Indent(" ", "    ")
+
+      message.RenderNDCParams(paramsEncoder, item, "", -1, -1, nil )
+      paramsEncoder.Flush()
+      enc.Flush()
+      data = ""
+      buf.Write( []byte("\n"))
+
+      buf.Write( paramsBuffer.Bytes() )
+
+      // enc.Encode( paramsBuffer.String() )
 		default:
 			data = fmt.Sprintf("%s", item)
 		}
@@ -191,27 +290,33 @@ func (message *Message) RenderNDCXML(enc *xml.Encoder, item interface{}, key str
 		enc.EncodeToken(xml.CharData(data))
 		enc.EncodeToken(element.End())
 
-		if index >= length {
 
-			sort.Sort(sort.Reverse(sort.StringSlice(parentElements)))
 
-			for i := 0; i < len(parentElements); i++ {
-				var e = parentElements[i]
-				if e != "" {
-					enc.EncodeToken(xml.EndElement{xml.Name{"", e}})
-				}
-				parentElements[i] = ""
-			}
-		}
+    if index >= length && len(parentElements) > 0 {
+      reverseElements := make([]string, 0)
+
+      for i := len(parentElements)-1; len(reverseElements) != len(parentElements) && i >= 0; i-- {
+        element := parentElements[i]
+        if element != "" {
+          reverseElements = append( reverseElements, element )
+        }
+      }
+
+        for i := 0; i < len(reverseElements); i++ {
+          var e = reverseElements[i]
+          if e != "" {
+              enc.EncodeToken(xml.EndElement{xml.Name{"", e}})
+            }
+            //parentElements[i] = ""
+            reverseElements[i] = ""
+          }
+    }
 	}
 }
-
 func (message *Message) Prepare() ([]byte, error) {
 
 	// SOAP
 
-	var SoapEnvelope SOAPEnvelope
-	var SoapBody SOAPBody
 
 	message.IsSoap = message.Client.Config["soap"] != nil
 
@@ -223,10 +328,7 @@ func (message *Message) Prepare() ([]byte, error) {
 
 	message.XMLName.Local = message.Method + "RQ"
 
-	if message.IsSoap {
-		SoapBody = SOAPBody{Message: message}
-		SoapEnvelope = SOAPEnvelope{Body: SoapBody}
-	} else {
+
 		TimeStamp := time.Now().Format(time.RFC3339)
 		EchoToken := sha1.New()
 		EchoToken.Write([]byte(TimeStamp))
@@ -239,24 +341,21 @@ func (message *Message) Prepare() ([]byte, error) {
 		message.TimeStamp = TimeStamp
 		message.Version = "1.1.5"
 		message.TransactionIdentifier = "TR-00000"
-	}
+
 
 	// Template based body:
 
 	ndc := message.Client.Config["ndc"]
 
-	fmt.Println("\n")
+  encBuffer := new(bytes.Buffer)
 
-	enc := xml.NewEncoder(os.Stdout)
+  encBuffer.Write([]byte(xml.Header))
+
+	enc := xml.NewEncoder(encBuffer)
 	enc.Indent(" ", "    ")
+	message.RenderNDCWrapper(enc, encBuffer, ndc, "", true, -1, -1, nil)
 
-	// fmt.Println(xml.Header)
-
-	message.RenderNDCXML(enc, ndc, "", true, -1, -1, nil)
-
-  message.RenderNDCXML(enc, message.Params, "", false, -1, -1, nil)
-
-	enc.Flush()
+  message.RenderNDCWrapper(enc, encBuffer, message.Params, "", false, -1, -1, nil)
 
 	requestWrapperEnd := xml.EndElement{
 		Name: xml.Name{"", message.Method + "RQ"},
@@ -276,32 +375,14 @@ func (message *Message) Prepare() ([]byte, error) {
 
 	enc.EncodeToken(soapBodyEnd)
 	enc.EncodeToken(soapEnvelopeEnd)
-}
+  }
 
 	enc.Flush()
 
-	fmt.Println("\n")
-
-	// Params:
-
-  /*
-	paramsWriter := new(bytes.Buffer)
-	paramsMap := mxj.Map(message.Params)
-	paramsString, _ := paramsMap.XmlWriterRaw(paramsWriter, "_ndc")
-
-  fmt.Println(string(paramsString))
-  */
-
-	// message.ParamsBody = string(paramsString)
-
 	// Final output
 
-	if message.IsSoap {
-		output, err := xml.MarshalIndent(SoapEnvelope, "  ", "   ")
-		return output, err
-	} else {
-		output, err := xml.MarshalIndent(message, "  ", "    ")
-		return output, err
-	}
+  var err error
+  output := encBuffer.Bytes()
 
+  return output, err
 }
