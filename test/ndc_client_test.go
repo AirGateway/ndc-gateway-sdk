@@ -10,7 +10,8 @@ var (
 
 func init() {
   options = ndc.ClientOptions{
-    Endpoint: "http://127.0.0.1:8000/",
+    //Endpoint: "http://127.0.0.1:8000/",
+    Endpoint: "http://prxy.airgateway.net:8080/gtwy/ndc/",
     ConfigPath: "../config/ndc-openndc.yml",
   }
 }

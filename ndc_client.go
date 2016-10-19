@@ -76,6 +76,7 @@ func MapSliceToMap(slice yaml.MapSlice, m map[string]interface{}) map[string]int
 
 func (client *Client) LoadConfig() error {
 	config, err := ioutil.ReadFile(client.Options.ConfigPath)
+
 	client.RawConfig = config
 	err = yaml.Unmarshal(client.RawConfig, &client.Config)
 
@@ -122,28 +123,33 @@ func (client *Client) AppendHeaders(r *http.Request, HeadersConfig interface{}) 
 
 func (client *Client) Request(message Message) *http.Response {
 
-	var Config, ServerConfig, RestConfig map[string]interface{}
+	//var Config, ServerConfig, RestConfig map[string]interface{}
+	var Config, RestConfig map[string]interface{}
 
 	message.Client = client
 
 	body, _ := message.Prepare()
 
+	//fmt.Println(body)
+
 	if client.HasTemplateVars {
 		Config = client.PrepareConfig(message)
 	} else {
-		// Config = client.Config
+		 //Config = client.Config
 	}
 
-	ServerConfig = Config["server"].(map[string]interface{})
 	RestConfig = Config["rest"].(map[string]interface{})
-
-	RequestUrl := ServerConfig["url"]
+	//ServerConfig = Config["server"].(map[string]interface{})
+	//RequestUrl := ServerConfig["url"]
+	RequestUrl := RestConfig["url"]
 	RequestReader := bytes.NewReader(body)
 	Request, _ := http.NewRequest("POST", RequestUrl.(string), RequestReader)
 
 	client.AppendHeaders(Request, RestConfig["headers"])
 
 	Response, _ := client.HttpClient.Do(Request)
+
+	//fmt.Println(Response)
 
 	return Response
 }

@@ -2,10 +2,12 @@
 label: ONDC
 
 rest:
-  url: http://ndc-sandbox.dev/api/v0/ndc/
+  url: http://prxy.airgateway.net:8080/gtwy/ndc/
   headers:
     Accept: application/xml
     Content-Type: application/xml
+    AG-Authorization: 574f51531affed0643000001c5ac04f6e57e419c6cdc25ce998a2a8d
+    AG-Forwarded-Hosts: "*"
 
 soap:
 auth:
@@ -25,4 +27,3 @@ ndc:
           PseudoCity: A4A
           AgentUserID: travelwadus
           IATA_Number: "00002004"
-          

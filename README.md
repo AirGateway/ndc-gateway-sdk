@@ -13,35 +13,85 @@ This is a Golang package that wraps any NDC-compliant API.
 ```
 package main
 
-import "github.com/open-ndc/ndc-go-sdk"
+import (
+  "github.com/ndc-request/ndc-go-sdk"
+	"io/ioutil"
+  "fmt"
+)
 
 func main() {
 
-  client, err := ndc.NewClient(ndc.ClientOptions{
-    ConfigPath: "config/ndc-openndc.yml"
-  })
-
-  params := map[string]interface{}{
-   "CoreQuery": map[string]interface{}{
-      "OriginDestinations": map[string]interface{}{
-        "OriginDestination": map[string]interface{} {
-          "Departure": map[string]interface{} {
-            "AirportCode": "LHR",
-            "Date": "2016-05-20",
+  client, _ := ndc.NewClient(&ndc.ClientOptions{ConfigPath: "github.com/ndc-request/ndc-go-sdk/config/ndc-openndc.yml"})
+  client.HasTemplateVars = true
+  params := ndc.Params{
+    ndc.Param{
+      "Travelers",
+      ndc.Params{
+        ndc.Param{
+          "Traveler",
+          ndc.Params{
+            ndc.Param{
+              "AnonymousTraveler",
+              ndc.Params{
+                ndc.Param{
+                  "PTC", "ADT",
+                },
+              },
+            },
           },
-          "Arrival": map[string]interface{} {
-            "AirportCode": "JFK",
+        },
+      },
+    },
+    ndc.Param{
+      "CoreQuery",
+      ndc.Params{
+        ndc.Param{
+          "OriginDestinations",
+          ndc.Params{
+            ndc.Param{
+              "OriginDestination",
+              ndc.Params{
+                ndc.Param{
+                  "Departure",
+                  ndc.Params{
+                    ndc.Param{
+                      "AirportCode", "LHR",
+                    },
+                    ndc.Param{
+                      "Date", "2016-05-27",
+                    },
+                  },
+                },
+                ndc.Param{
+                  "Arrival",
+                  ndc.Params{
+                    ndc.Param{
+                      "AirportCode", "JFK",
+                    },
+                    ndc.Param{
+                      "Date", "2016-05-29",
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
     },
   }
-
   response := client.Request(ndc.Message{
     Method: "AirShopping",
     Params: params,
   })
 
+  defer response.Body.Close()
+
+  fmt.Println( "-> Receiving response:\n---\n" )
+  fmt.Println( response , "\n---\n-> Response body:\n---\n")
+	body, _ := ioutil.ReadAll(response.Body)
+	fmt.Println( string(body) )
+  fmt.Println( "\n--\n")
 }
 
 ```
