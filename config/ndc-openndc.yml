@@ -6,7 +6,7 @@ rest:
   headers:
     Accept: application/xml
     Content-Type: application/xml
-    AG-Authorization: 574f51531affed0643000001c5ac04f6e57e419c6cdc25ce998a2a8d
+    AG-Authorization: key
     AG-Forwarded-Hosts: "*"
 
 soap:
