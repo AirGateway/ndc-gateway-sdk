@@ -123,8 +123,8 @@ func (client *Client) AppendHeaders(r *http.Request, HeadersConfig interface{}) 
 
 func (client *Client) Request(message Message) *http.Response {
 
-	//var Config, ServerConfig, RestConfig map[string]interface{}
-	var Config, RestConfig map[string]interface{}
+	var Config, ServerConfig, RestConfig map[string]interface{}
+	//var Config, RestConfig map[string]interface{}
 
 	message.Client = client
 
@@ -138,10 +138,11 @@ func (client *Client) Request(message Message) *http.Response {
 		 //Config = client.Config
 	}
 
+	fmt.Println(Config)
 	RestConfig = Config["rest"].(map[string]interface{})
-	//ServerConfig = Config["server"].(map[string]interface{})
-	//RequestUrl := ServerConfig["url"]
-	RequestUrl := RestConfig["url"]
+	ServerConfig = Config["server"].(map[string]interface{})
+	RequestUrl := ServerConfig["url"]
+	//RequestUrl := RestConfig["url"]
 	RequestReader := bytes.NewReader(body)
 	Request, _ := http.NewRequest("POST", RequestUrl.(string), RequestReader)
 

@@ -1,13 +1,15 @@
-# Run tests using IATA NDC sample sandbox Kronos
-label: ONDC
-
 rest:
-  url: http://prxy.airgateway.net:8080/gtwy/ndc/
   headers:
     Accept: application/xml
     Content-Type: application/xml
-    AG-Authorization: key
+    AG-Authorization: secretkey
     AG-Forwarded-Hosts: "*"
+
+server:
+  url: http://prxy.airgateway.net:8080/gtwy/ndc/
+  protocol: http
+  server: prxy.airgateway.net:8080
+  path: /gtwy/ndc
 
 soap:
 auth:
