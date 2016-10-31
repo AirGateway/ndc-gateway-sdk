@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-
+	"strconv"
 	"gopkg.in/yaml.v2"
 )
 
@@ -138,13 +138,25 @@ func (client *Client) Request(message Message) *http.Response {
 		 //Config = client.Config
 	}
 
-	fmt.Println(Config)
+	//fmt.Println(Config)
 	RestConfig = Config["rest"].(map[string]interface{})
 	ServerConfig = Config["server"].(map[string]interface{})
 	RequestUrl := ServerConfig["url"]
 	//RequestUrl := RestConfig["url"]
 	RequestReader := bytes.NewReader(body)
 	Request, _ := http.NewRequest("POST", RequestUrl.(string), RequestReader)
+
+	/*fmt.Println(RequestReader)
+	fmt.Println("")
+	fmt.Println("")
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(RequestReader)
+	s := buf.String()
+	fmt.Println(s)
+	fmt.Println("")
+	fmt.Println("")*/
+
 
 	client.AppendHeaders(Request, RestConfig["headers"])
 
@@ -153,4 +165,11 @@ func (client *Client) Request(message Message) *http.Response {
 	//fmt.Println(Response)
 
 	return Response
+}
+func convert( b []byte ) string {
+    s := make([]string,len(b))
+    for i := range b {
+        s[i] = strconv.Itoa(int(b[i]))
+    }
+    return strings.Join(s,",")
 }
