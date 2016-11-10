@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"strconv"
+	"bufio"
+	//"log"
 	"gopkg.in/yaml.v2"
 )
 
@@ -36,6 +38,8 @@ type Client struct {
 	RawConfig       []byte
 	HttpClient      *http.Client
 }
+
+type postProcess func(string)
 
 func NewClient(options *ClientOptions) (*Client, error) {
 	client := &Client{Options: *options}
@@ -121,7 +125,7 @@ func (client *Client) AppendHeaders(r *http.Request, HeadersConfig interface{}) 
 	}
 }
 
-func (client *Client) Request(message Message) *http.Response {
+func (client *Client) Request(message Message, callback postProcess) {
 
 	var Config, ServerConfig, RestConfig map[string]interface{}
 	//var Config, RestConfig map[string]interface{}
@@ -139,32 +143,35 @@ func (client *Client) Request(message Message) *http.Response {
 	}
 
 	//fmt.Println(Config)
-	RestConfig = Config["rest"].(map[string]interface{})
-	ServerConfig = Config["server"].(map[string]interface{})
-	RequestUrl := ServerConfig["url"]
-	//RequestUrl := RestConfig["url"]
+	RestConfig 		 = Config["rest"].(map[string]interface{})
+	ServerConfig 	 = Config["server"].(map[string]interface{})
+	RequestUrl 		:= ServerConfig["url"]
 	RequestReader := bytes.NewReader(body)
-	Request, _ := http.NewRequest("POST", RequestUrl.(string), RequestReader)
-
-	/*fmt.Println(RequestReader)
-	fmt.Println("")
-	fmt.Println("")
-
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(RequestReader)
-	s := buf.String()
-	fmt.Println(s)
-	fmt.Println("")
-	fmt.Println("")*/
 
 
+	Request, _ 		:= http.NewRequest("POST", RequestUrl.(string), RequestReader)
 	client.AppendHeaders(Request, RestConfig["headers"])
+	Response, _ 	:= client.HttpClient.Do(Request)
 
-	Response, _ := client.HttpClient.Do(Request)
-
-	//fmt.Println(Response)
-
-	return Response
+	message_aux := ""
+  reader := bufio.NewReader(Response.Body)
+	for {
+		line, err := reader.ReadBytes('\n')
+		if err==nil {
+			message_aux = message_aux + string(line)
+			if strings.Contains(message_aux, "<!-- AG-EOM -->"){
+				/*fmt.Println("")
+				fmt.Println("")
+				fmt.Println("")
+				fmt.Println(message_aux)
+				fmt.Println("")
+				fmt.Println("")
+				fmt.Println("")*/
+				callback(message_aux)
+				message_aux = ""
+			}
+		}else{break;}
+	}
 }
 func convert( b []byte ) string {
     s := make([]string,len(b))
