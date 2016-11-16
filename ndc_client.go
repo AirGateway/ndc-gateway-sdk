@@ -27,6 +27,9 @@ var NDCSupportedMethods = map[string]struct{}{
 
 var TemplateVars = []string{"request_name"}
 
+type Extras struct {
+	Value map[string]string
+}
 type ClientOptions struct {
 	ConfigPath string
 }
@@ -34,6 +37,7 @@ type ClientOptions struct {
 type Client struct {
 	Options         ClientOptions
 	HasTemplateVars bool
+	Extras					map[string]Extras
 	Config          map[string]yaml.MapSlice
 	RawConfig       []byte
 	HttpClient      *http.Client
@@ -41,9 +45,10 @@ type Client struct {
 
 type postProcess func(string)
 
-func NewClient(options *ClientOptions) (*Client, error) {
+func NewClient(options *ClientOptions, extras map[string]Extras) (*Client, error) {
 	client := &Client{Options: *options}
 	client.Config = map[string]yaml.MapSlice{}
+	client.Extras = extras
 	client.HttpClient = &http.Client{}
 	client.HasTemplateVars = false
 	err := client.LoadConfig()
@@ -151,7 +156,16 @@ func (client *Client) Request(message Message, callback postProcess) {
 
 	Request, _ 		:= http.NewRequest("POST", RequestUrl.(string), RequestReader)
 	client.AppendHeaders(Request, RestConfig["headers"])
+	//elem, ok := client.Extras["headers"]
+	if elem, ok := client.Extras["headers"]; ok==true{
+		for Header, Value := range elem.Value {
+			fmt.Println(Header, Value)
+			Request.Header.Del(Header)
+			Request.Header.Add(Header, Value)
+		}
+	}
 	Response, _ 	:= client.HttpClient.Do(Request)
+
 
 	message_aux := ""
   reader := bufio.NewReader(Response.Body)
