@@ -61,7 +61,9 @@ type SoapConfig struct {
 
 type Params []Param
 type Param struct {
-	Key, Value interface{}
+	Key interface{}
+	Attr []xml.Attr
+	Value interface{}
 }
 
 func (message *Message) GetSoapConfig() (config SoapConfig) {
@@ -109,22 +111,30 @@ func (message *Message) GetSoapConfig() (config SoapConfig) {
 	return
 }
 
-func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key string, index int, length int, parentElements []string) {
+func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key string, attr []xml.Attr, index int, length int, parentElements []string) {
 	t := fmt.Sprintf("%T", item)
-
+	fmt.Println("")
+	fmt.Println("item ", item)
+	fmt.Println("t ", t)
+	fmt.Println("key ", key)
 	if parentElements == nil {
 		parentElements = make([]string, 0)
 	}
 
 	element := xml.StartElement{
 		Name: xml.Name{"", key},
-		Attr: []xml.Attr{},
+		Attr: attr,
 	}
 
 	switch t {
 	case "ndc.Params":
 		Items := item.(Params)
 
+		fmt.Println("Items ", Items)
+
+		fmt.Println("")
+		fmt.Println("")
+		fmt.Println("")
 		ItemLength := len(Items)
 
 		if key != "" {
@@ -140,9 +150,9 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 
 			if ItemType == "ndc.Param" {
 				Item := v.Value.(Param)
-				message.RenderNDCParams(enc, Item.Value, Item.Key.(string), k, ItemLength, parentElements)
+				message.RenderNDCParams(enc, Item.Value, Item.Key.(string), Item.Attr, k, ItemLength, parentElements)
 			} else {
-				message.RenderNDCParams(enc, v.Value, v.Key.(string), k, ItemLength, parentElements)
+				message.RenderNDCParams(enc, v.Value, v.Key.(string), v.Attr, k, ItemLength, parentElements)
 			}
 
 		}
@@ -161,6 +171,10 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 			data = fmt.Sprintf("%s", item)
 		}
 
+				fmt.Println("data", data)
+				fmt.Println("")
+				fmt.Println("")
+				fmt.Println("")
 		enc.EncodeToken(xml.CharData(data))
 		enc.EncodeToken(element.End())
 
@@ -265,8 +279,7 @@ func (message *Message) RenderNDCWrapper(enc *xml.Encoder, buf *bytes.Buffer, it
 			var paramsBuffer = new(bytes.Buffer)
 			paramsEncoder := xml.NewEncoder(paramsBuffer)
 			paramsEncoder.Indent(" ", "    ")
-
-			message.RenderNDCParams(paramsEncoder, item, "", -1, -1, nil)
+			message.RenderNDCParams(paramsEncoder, item, "", []xml.Attr{}, -1, -1, nil)
 			paramsEncoder.Flush()
 			enc.Flush()
 			data = ""

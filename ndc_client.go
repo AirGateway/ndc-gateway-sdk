@@ -139,8 +139,6 @@ func (client *Client) Request(message Message, callback postProcess) {
 
 	body, _ := message.Prepare()
 
-	//fmt.Println(body)
-
 	if client.HasTemplateVars {
 		Config = client.PrepareConfig(message)
 	} else {
@@ -174,13 +172,6 @@ func (client *Client) Request(message Message, callback postProcess) {
 		if err==nil {
 			message_aux = message_aux + string(line)
 			if strings.Contains(message_aux, "<!-- AG-EOM -->"){
-				/*fmt.Println("")
-				fmt.Println("")
-				fmt.Println("")
-				fmt.Println(message_aux)
-				fmt.Println("")
-				fmt.Println("")
-				fmt.Println("")*/
 				callback(message_aux)
 				message_aux = ""
 			}
