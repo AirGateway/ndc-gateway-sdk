@@ -129,8 +129,34 @@ func (client *Client) AppendHeaders(r *http.Request, HeadersConfig interface{}) 
 		r.Header.Add(Header, Value.(string))
 	}
 }
+func (client *Client) RequestAsynch(message Message, callback postProcess) {
+	Response := client.Request(message)
 
-func (client *Client) Request(message Message, callback postProcess) {
+	message_aux := ""
+  reader := bufio.NewReader(Response.Body)
+	for {
+		line, err := reader.ReadBytes('\n')
+		//fmt.Println(line)
+		if err==nil {
+			message_aux = message_aux + string(line)
+			if strings.Contains(message_aux, "<!-- AG-EOM -->"){
+				callback(message_aux)
+				message_aux = ""
+			}
+		}else{fmt.Println("ERROR", err);break;}
+	}
+}
+func (client *Client) RequestSynch(message Message) (string) {
+	Response := client.Request(message)
+	fmt.Println( "-> Receiving response:\n---\n" )
+	//fmt.Println( response , "\n---\n-> Response body:\n---\n")
+	body_, _ := ioutil.ReadAll(Response.Body)
+	fmt.Println( string(body_) )
+	fmt.Println( "\n--\n")
+	return string(body_);
+}
+
+func (client *Client) Request(message Message) (*http.Response) {
 
 	var Config, ServerConfig, RestConfig map[string]interface{}
 	//var Config, RestConfig map[string]interface{}
@@ -163,30 +189,11 @@ func (client *Client) Request(message Message, callback postProcess) {
 		}
 	}
 	Response, _ 	:= client.HttpClient.Do(Request)
-	/*
-	fmt.Println( "-> Receiving response:\n---\n" )
-	//fmt.Println( response , "\n---\n-> Response body:\n---\n")
-	body_, _ := ioutil.ReadAll(Response.Body)
-	fmt.Println( string(body_) )
-	fmt.Println( "\n--\n")
-	*/
 
+	return Response;
 
 	//fmt.Println(Response.Body);
 
-	message_aux := ""
-  reader := bufio.NewReader(Response.Body)
-	for {
-		line, err := reader.ReadBytes('\n')
-		//fmt.Println(line)
-		if err==nil {
-			message_aux = message_aux + string(line)
-			if strings.Contains(message_aux, "<!-- AG-EOM -->"){
-				callback(message_aux)
-				message_aux = ""
-			}
-		}else{fmt.Println("ERROR", err);break;}
-	}
 }
 func convert( b []byte ) string {
     s := make([]string,len(b))
