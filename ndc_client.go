@@ -163,19 +163,29 @@ func (client *Client) Request(message Message, callback postProcess) {
 		}
 	}
 	Response, _ 	:= client.HttpClient.Do(Request)
+	/*
+	fmt.Println( "-> Receiving response:\n---\n" )
+	//fmt.Println( response , "\n---\n-> Response body:\n---\n")
+	body_, _ := ioutil.ReadAll(Response.Body)
+	fmt.Println( string(body_) )
+	fmt.Println( "\n--\n")
+	*/
 
+
+	//fmt.Println(Response.Body);
 
 	message_aux := ""
   reader := bufio.NewReader(Response.Body)
 	for {
 		line, err := reader.ReadBytes('\n')
+		//fmt.Println(line)
 		if err==nil {
 			message_aux = message_aux + string(line)
 			if strings.Contains(message_aux, "<!-- AG-EOM -->"){
 				callback(message_aux)
 				message_aux = ""
 			}
-		}else{break;}
+		}else{fmt.Println("ERROR", err);break;}
 	}
 }
 func convert( b []byte ) string {

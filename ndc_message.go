@@ -79,6 +79,7 @@ func (message *Message) GetSoapConfig() (config SoapConfig) {
 
 	var attributes yaml.MapSlice
 
+
 	for _, v := range message.Client.Config["soap"] {
 		switch v.Key {
 		case "request_namespace":
@@ -113,10 +114,7 @@ func (message *Message) GetSoapConfig() (config SoapConfig) {
 
 func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key string, attr []xml.Attr, index int, length int, parentElements []string) {
 	t := fmt.Sprintf("%T", item)
-	fmt.Println("")
-	fmt.Println("item ", item)
-	fmt.Println("t ", t)
-	fmt.Println("key ", key)
+
 	if parentElements == nil {
 		parentElements = make([]string, 0)
 	}
@@ -130,11 +128,6 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 	case "ndc.Params":
 		Items := item.(Params)
 
-		fmt.Println("Items ", Items)
-
-		fmt.Println("")
-		fmt.Println("")
-		fmt.Println("")
 		ItemLength := len(Items)
 
 		if key != "" {
@@ -171,16 +164,12 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 			data = fmt.Sprintf("%s", item)
 		}
 
-				fmt.Println("data", data)
-				fmt.Println("")
-				fmt.Println("")
-				fmt.Println("")
 		enc.EncodeToken(xml.CharData(data))
 		enc.EncodeToken(element.End())
 
 	}
 
-	if index >= length-1 {
+	/*if index >= length-1 {
 
 		if len(parentElements) > 0 {
 			lastElement := parentElements[len(parentElements)-1]
@@ -193,7 +182,8 @@ func (message *Message) RenderNDCParams(enc *xml.Encoder, item interface{}, key 
 			}
 
 		}
-	}
+	}*/
+	enc.EncodeToken(element.End())
 
 	return
 }
