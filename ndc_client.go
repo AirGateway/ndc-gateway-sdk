@@ -1,14 +1,14 @@
 package ndc
 
 import (
+  "fmt"
+  //"log"
 	"bytes"
-	"fmt"
+  "bufio"
+  "strconv"
+  "strings"
+  "net/http"
 	"io/ioutil"
-	"net/http"
-	"strings"
-	"strconv"
-	"bufio"
-	//"log"
 	"gopkg.in/yaml.v2"
 )
 
@@ -147,12 +147,11 @@ func (client *Client) RequestAsynch(message Message, callback postProcess) {
 	}
 }
 func (client *Client) RequestSynch(message Message) (string) {
+  fmt.Println( "-> Doing Request:\n---\n" )
 	Response := client.Request(message)
 	fmt.Println( "-> Receiving response:\n---\n" )
-	//fmt.Println( response , "\n---\n-> Response body:\n---\n")
+	//fmt.Println( Response , "\n---\n-> Response body:\n---\n")
 	body_, _ := ioutil.ReadAll(Response.Body)
-	fmt.Println( string(body_) )
-	fmt.Println( "\n--\n")
 	return string(body_);
 }
 
@@ -174,7 +173,7 @@ func (client *Client) Request(message Message) (*http.Response) {
 	//fmt.Println(Config)
 	RestConfig 		 = Config["rest"].(map[string]interface{})
 	ServerConfig 	 = Config["server"].(map[string]interface{})
-	RequestUrl 		:= ServerConfig["url"]
+	RequestUrl 		:= ServerConfig["url_"+client.Extras["enviroment"].Value["url"]]
 	RequestReader := bytes.NewReader(body)
 
 
@@ -183,7 +182,7 @@ func (client *Client) Request(message Message) (*http.Response) {
 	//elem, ok := client.Extras["headers"]
 	if elem, ok := client.Extras["headers"]; ok==true{
 		for Header, Value := range elem.Value {
-			fmt.Println(Header, Value)
+			//fmt.Println(Header, Value)
 			Request.Header.Del(Header)
 			Request.Header.Add(Header, Value)
 		}
