@@ -173,15 +173,20 @@ func (client *Client) Request(message Message) (*http.Response) {
 	//fmt.Println(Config)
 	RestConfig 		 = Config["rest"].(map[string]interface{})
 	ServerConfig 	 = Config["server"].(map[string]interface{})
-	RequestUrl 		:= ServerConfig["url_"+client.Extras["enviroment"].Value["url"]]
+  var RequestUrl  interface {}
+  if env, ok := client.Extras["enviroment"]; ok==true{
+    RequestUrl 		= ServerConfig["url_"+env.Value["url"]]
+  }else{
+    RequestUrl    = ServerConfig["url_production"]
+  }
 	RequestReader := bytes.NewReader(body)
 
 
 	Request, _ 		:= http.NewRequest("POST", RequestUrl.(string), RequestReader)
 	client.AppendHeaders(Request, RestConfig["headers"])
 	//elem, ok := client.Extras["headers"]
-	if elem, ok := client.Extras["headers"]; ok==true{
-		for Header, Value := range elem.Value {
+	if headers, ok := client.Extras["headers"]; ok==true{
+		for Header, Value := range headers.Value {
 			//fmt.Println(Header, Value)
 			Request.Header.Del(Header)
 			Request.Header.Add(Header, Value)
